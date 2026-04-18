@@ -9,9 +9,9 @@ import kotlinx.coroutines.launch
 
 class SettingsViewModel(app: Application) : AndroidViewModel(app) {
     private val settings = (app as CallGuardApp).settingsRepository
-    val windowMinutes: Flow<Int> = settings.windowMinutes
+    val windowSeconds: Flow<Int> = settings.windowSeconds
 
-    fun setWindowMinutes(minutes: Int) {
-        viewModelScope.launch { settings.setWindowMinutes(minutes) }
+    fun setWindowSeconds(seconds: Int) {
+        viewModelScope.launch { settings.setWindowSeconds(seconds) }
     }
 }

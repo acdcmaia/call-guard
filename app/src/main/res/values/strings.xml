@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">Call Guard</string>
+    <string name="notification_channel_name">Call Guard ativo</string>
+    <string name="notification_text">Proteção contra chamadas indesejadas ativa</string>
 </resources>

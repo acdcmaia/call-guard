@@ -23,6 +23,13 @@ class BlacklistViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch { repo.deletePattern(pattern) }
     }
 
-    fun isValidRegex(pattern: String): Boolean =
-        runCatching { Regex(pattern) }.isSuccess
+    fun updatePattern(original: BlacklistPattern, newPattern: String, newLabel: String) {
+        if (!isValidPattern(newPattern)) return
+        viewModelScope.launch {
+            repo.updatePattern(original.copy(pattern = newPattern, label = newLabel))
+        }
+    }
+
+    fun isValidPattern(pattern: String): Boolean =
+        pattern.isNotBlank() && pattern.all { it.isDigit() }
 }

@@ -1,6 +1,7 @@
 package com.acdcmaia.callguard
 
 import android.app.role.RoleManager
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -12,8 +13,13 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.lifecycleScope
+import com.acdcmaia.callguard.service.CallGuardForegroundService
 import com.acdcmaia.callguard.ui.CallGuardNavigation
 import com.acdcmaia.callguard.ui.theme.CallGuardTheme
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class MainActivity : ComponentActivity() {
 
@@ -60,9 +66,26 @@ class MainActivity : ComponentActivity() {
         checkRole()
     }
 
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        if (intent.action == "android.telecom.action.POST_CALL") {
+            checkRole()
+        }
+    }
+
     private fun checkRole() {
-        val rm = getSystemService(RoleManager::class.java)
-        hasRole = rm.isRoleHeld(RoleManager.ROLE_CALL_SCREENING)
+        lifecycleScope.launch(Dispatchers.IO) {
+            val rm = getSystemService(RoleManager::class.java)
+            val roleHeld = rm.isRoleHeld(RoleManager.ROLE_CALL_SCREENING)
+            withContext(Dispatchers.Main) {
+                hasRole = roleHeld
+                if (roleHeld) {
+                    CallGuardForegroundService.start(this@MainActivity)
+                } else {
+                    CallGuardForegroundService.stop(this@MainActivity)
+                }
+            }
+        }
     }
 
     private fun requestRole() {

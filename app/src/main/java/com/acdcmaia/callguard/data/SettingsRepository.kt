@@ -10,14 +10,14 @@ import kotlinx.coroutines.flow.map
 private val Context.dataStore by preferencesDataStore(name = "settings")
 
 class SettingsRepository(private val context: Context) {
-    private val WINDOW_MINUTES = intPreferencesKey("window_minutes")
+    private val WINDOW_SECONDS = intPreferencesKey("window_seconds")
 
-    val windowMinutes: Flow<Int> = context.dataStore.data.map { prefs ->
-        prefs[WINDOW_MINUTES] ?: 5
+    val windowSeconds: Flow<Int> = context.dataStore.data.map { prefs ->
+        prefs[WINDOW_SECONDS] ?: 300
     }
 
-    suspend fun setWindowMinutes(minutes: Int) {
-        context.dataStore.edit { it[WINDOW_MINUTES] = minutes }
+    suspend fun setWindowSeconds(seconds: Int) {
+        context.dataStore.edit { it[WINDOW_SECONDS] = seconds }
     }
 
     companion object {

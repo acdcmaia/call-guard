@@ -14,6 +14,9 @@ interface RecentCallDao {
     @Insert
     suspend fun insert(call: RecentCall)
 
+    @Query("SELECT * FROM recent_calls")
+    suspend fun getAllOnce(): List<RecentCall>
+
     @Query("DELETE FROM recent_calls WHERE timestamp < :before")
     suspend fun deleteOlderThan(before: Long)
 }

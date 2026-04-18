@@ -1,53 +1,87 @@
 package com.acdcmaia.callguard.ui.blacklist
 
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntRect
+import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.PopupPositionProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.acdcmaia.callguard.data.db.BlacklistPattern
+import kotlinx.coroutines.launch
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BlacklistScreen(vm: BlacklistViewModel = viewModel()) {
     val patterns by vm.patterns.collectAsState(initial = emptyList())
-    var showDialog by remember { mutableStateOf(false) }
+    var showAddDialog by remember { mutableStateOf(false) }
+    var editTarget by remember { mutableStateOf<BlacklistPattern?>(null) }
 
     Scaffold(
         topBar = { TopAppBar(title = { Text("Lista Negra") }) },
         floatingActionButton = {
-            FloatingActionButton(onClick = { showDialog = true }) {
+            FloatingActionButton(onClick = { showAddDialog = true }) {
                 Icon(Icons.Default.Add, contentDescription = "Adicionar")
             }
         }
     ) { padding ->
         LazyColumn(contentPadding = padding) {
             items(patterns) { p ->
-                PatternItem(p, onDelete = { vm.deletePattern(p) })
+                PatternItem(
+                    p,
+                    onEdit = { editTarget = p },
+                    onDelete = { vm.deletePattern(p) }
+                )
                 HorizontalDivider()
             }
         }
     }
 
-    if (showDialog) {
-        AddPatternDialog(
-            onDismiss = { showDialog = false },
+    if (showAddDialog) {
+        PatternDialog(
+            title = "Novo Padrão",
+            initialPattern = "",
+            initialLabel = "",
+            isValid = vm::isValidPattern,
+            onDismiss = { showAddDialog = false },
             onConfirm = { pattern, label ->
                 vm.addPattern(pattern, label)
-                showDialog = false
-            },
-            isValid = vm::isValidRegex
+                showAddDialog = false
+            }
+        )
+    }
+
+    editTarget?.let { target ->
+        PatternDialog(
+            title = "Editar Padrão",
+            initialPattern = target.pattern,
+            initialLabel = target.label,
+            isValid = vm::isValidPattern,
+            onDismiss = { editTarget = null },
+            onConfirm = { pattern, label ->
+                vm.updatePattern(target, pattern, label)
+                editTarget = null
+            }
         )
     }
 }
 
 @Composable
-private fun PatternItem(pattern: BlacklistPattern, onDelete: () -> Unit) {
+private fun PatternItem(pattern: BlacklistPattern, onEdit: () -> Unit, onDelete: () -> Unit) {
     ListItem(
         headlineContent = { Text(pattern.pattern) },
         supportingContent = { if (pattern.label.isNotBlank()) Text(pattern.label) },
@@ -55,35 +89,66 @@ private fun PatternItem(pattern: BlacklistPattern, onDelete: () -> Unit) {
             IconButton(onClick = onDelete) {
                 Icon(Icons.Default.Delete, contentDescription = "Remover")
             }
-        }
+        },
+        modifier = Modifier.clickable { onEdit() }
     )
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun AddPatternDialog(
+private fun PatternDialog(
+    title: String,
+    initialPattern: String,
+    initialLabel: String,
+    isValid: (String) -> Boolean,
     onDismiss: () -> Unit,
-    onConfirm: (String, String) -> Unit,
-    isValid: (String) -> Boolean
+    onConfirm: (String, String) -> Unit
 ) {
-    var pattern by remember { mutableStateOf("") }
-    var label by remember { mutableStateOf("") }
-    val valid = pattern.isNotBlank() && isValid(pattern)
+    var pattern by remember { mutableStateOf(initialPattern) }
+    var label by remember { mutableStateOf(initialLabel) }
+    val tooltipState = rememberTooltipState(isPersistent = true)
+    val scope = rememberCoroutineScope()
+    val belowAnchor = remember {
+        object : PopupPositionProvider {
+            override fun calculatePosition(
+                anchorBounds: IntRect,
+                windowSize: IntSize,
+                layoutDirection: LayoutDirection,
+                popupContentSize: IntSize
+            ): IntOffset {
+                val x = maxOf(0, minOf(anchorBounds.left, windowSize.width - popupContentSize.width))
+                val y = anchorBounds.bottom
+                return IntOffset(x, y)
+            }
+        }
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Novo Padrão") },
+        title = { Text(title) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(
-                    value = pattern,
-                    onValueChange = { pattern = it },
-                    label = { Text("Regex") },
-                    isError = pattern.isNotBlank() && !isValid(pattern),
-                    supportingText = {
-                        if (pattern.isNotBlank() && !isValid(pattern))
-                            Text("Regex inválida")
-                    }
-                )
+                TooltipBox(
+                    positionProvider = belowAnchor,
+                    tooltip = {
+                        RichTooltip {
+                            Text("Sequência de dígitos que apareça em qualquer parte do número chamador. Ex.: '91234' bloqueia chamadas de '021912345678'")
+                        }
+                    },
+                    state = tooltipState
+                ) {
+                    OutlinedTextField(
+                        value = pattern,
+                        onValueChange = { pattern = it.filter { c -> c.isDigit() } },
+                        label = { Text("Sequência de dígitos") },
+                        placeholder = { Text("ex: 91234") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        singleLine = true,
+                        modifier = Modifier
+                            .focusable()
+                            .onFocusChanged { if (it.isFocused) scope.launch { tooltipState.show() } }
+                    )
+                }
                 OutlinedTextField(
                     value = label,
                     onValueChange = { label = it },
@@ -92,8 +157,8 @@ private fun AddPatternDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = { onConfirm(pattern, label) }, enabled = valid) {
-                Text("Adicionar")
+            TextButton(onClick = { onConfirm(pattern, label) }, enabled = isValid(pattern)) {
+                Text("Salvar")
             }
         },
         dismissButton = {
