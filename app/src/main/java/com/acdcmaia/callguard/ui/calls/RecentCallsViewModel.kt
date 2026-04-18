@@ -7,30 +7,30 @@ import com.acdcmaia.callguard.CallGuardApp
 import com.acdcmaia.callguard.data.CallHistoryItem
 import com.acdcmaia.callguard.data.CallLogRepository
 import com.acdcmaia.callguard.data.CallRepository
-import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.merge
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.transformLatest
 
 class RecentCallsViewModel(
     private val callLogRepo: CallLogRepository,
-    private val callRepo: CallRepository
+    callRepo: CallRepository
 ) : ViewModel() {
 
-    private val _calls = MutableStateFlow<List<CallHistoryItem>>(emptyList())
-    val calls: StateFlow<List<CallHistoryItem>> = _calls
+    private val refreshTrigger = MutableSharedFlow<Unit>(replay = 1).apply { tryEmit(Unit) }
 
-    init {
-        viewModelScope.launch {
-            callRepo.recentCalls.collect { refresh() }
-        }
-    }
+    val calls: StateFlow<List<CallHistoryItem>> = merge(
+        callRepo.recentCalls.map { },
+        refreshTrigger
+    ).transformLatest {
+        emit(callLogRepo.getMergedHistory())
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     fun loadHistory() {
-        viewModelScope.launch { refresh() }
-    }
-
-    private suspend fun refresh() {
-        _calls.value = callLogRepo.getMergedHistory()
+        refreshTrigger.tryEmit(Unit)
     }
 
     companion object {

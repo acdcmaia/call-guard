@@ -11,13 +11,13 @@ import android.graphics.Color
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import com.acdcmaia.callguard.CallGuardApp
-import com.acdcmaia.callguard.MainActivity
 import com.acdcmaia.callguard.R
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 class CallGuardForegroundService : Service() {
@@ -29,10 +29,18 @@ class CallGuardForegroundService : Service() {
         get() = application as? CallGuardApp
             ?: throw IllegalStateException("Application deve ser CallGuardApp")
 
+    private val markSeenPendingIntent: PendingIntent by lazy {
+        PendingIntent.getBroadcast(
+            this, 0,
+            Intent(MarkSeenReceiver.ACTION).apply { setPackage(packageName) },
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        )
+    }
+
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel()
-        startForeground(NOTIFICATION_ID, buildNotification(0))
+        startForeground(NOTIFICATION_ID, buildNotification(0L))
         observeBlockedCount()
     }
 
@@ -47,40 +55,33 @@ class CallGuardForegroundService : Service() {
     private fun observeBlockedCount() {
         serviceScope.launch {
             combine(
-                app.database.recentCallDao().countBlockedFlow(),
+                app.callRepository.countBlockedFlow(),
                 app.settingsRepository.seenBlockedCount
             ) { total, seen ->
-                // -1 means first run: treat all existing as seen
-                if (seen < 0) 0 else maxOf(0, total - seen.toInt())
+                if (seen < 0L) 0L else maxOf(0L, total - seen)
             }.collect { newCount ->
                 updateNotification(newCount)
             }
         }
     }
 
-    private fun buildNotification(newBlockedCount: Int): Notification {
-        val markSeenIntent = Intent(this, MainActivity::class.java).apply {
-            action = MainActivity.ACTION_MARK_SEEN
-            flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
-        }
-        val pendingIntent = PendingIntent.getActivity(
-            this, 0, markSeenIntent,
-            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
-        )
-
-        return if (newBlockedCount > 0) {
+    private fun buildNotification(newBlockedCount: Long): Notification {
+        return if (newBlockedCount > 0L) {
             NotificationCompat.Builder(this, CHANNEL_ID)
                 .setContentTitle(getString(R.string.app_name))
                 .setContentText(
                     resources.getQuantityString(
-                        R.plurals.notification_blocked, newBlockedCount, newBlockedCount
+                        R.plurals.notification_blocked,
+                        newBlockedCount.toInt(),
+                        newBlockedCount.toInt()
                     )
                 )
                 .setSmallIcon(R.drawable.ic_notification_blocked)
                 .setColor(Color.rgb(211, 47, 47))
                 .setColorized(true)
-                .setContentIntent(pendingIntent)
+                .setContentIntent(markSeenPendingIntent)
                 .setOngoing(true)
+                .setSilent(true)
                 .build()
         } else {
             NotificationCompat.Builder(this, CHANNEL_ID)
@@ -89,20 +90,28 @@ class CallGuardForegroundService : Service() {
                 .setSmallIcon(R.drawable.ic_notification)
                 .setColor(Color.rgb(56, 142, 60))
                 .setColorized(true)
-                .setContentIntent(pendingIntent)
+                .setContentIntent(markSeenPendingIntent)
                 .setOngoing(true)
+                .setSilent(true)
                 .build()
         }
     }
 
-    private fun updateNotification(newBlockedCount: Int) {
+    private fun updateNotification(newBlockedCount: Long) {
         getSystemService(NotificationManager::class.java)
             .notify(NOTIFICATION_ID, buildNotification(newBlockedCount))
     }
 
     private fun pruneOldCalls() {
         val cutoff = System.currentTimeMillis() - 30L * 24 * 60 * 60 * 1_000
-        serviceScope.launch { app.database.recentCallDao().deleteOlderThan(cutoff) }
+        serviceScope.launch {
+            app.callRepository.pruneCallsBefore(cutoff)
+            val newTotal = app.callRepository.countBlockedOnce()
+            val seen = app.settingsRepository.seenBlockedCount.first()
+            if (seen > newTotal) {
+                app.settingsRepository.setSeenBlockedCount(newTotal)
+            }
+        }
     }
 
     override fun onDestroy() {
@@ -116,13 +125,13 @@ class CallGuardForegroundService : Service() {
         val channel = NotificationChannel(
             CHANNEL_ID,
             getString(R.string.notification_channel_name),
-            NotificationManager.IMPORTANCE_LOW
+            NotificationManager.IMPORTANCE_DEFAULT
         )
         getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
     }
 
     companion object {
-        private const val CHANNEL_ID = "callguard_active"
+        private const val CHANNEL_ID = "callguard_status"
         private const val NOTIFICATION_ID = 1
 
         fun start(context: Context) {
