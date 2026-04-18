@@ -45,14 +45,28 @@ class CallGuardScreeningService : CallScreeningService() {
         val app = application as CallGuardApp
         val repo = app.callRepository
         val settings = app.settingsRepository
+        val contacts = app.contactsRepository
 
-        val (patterns, windowSeconds) = coroutineScope {
+        val (patterns, windowSeconds, isContact) = coroutineScope {
             val patternsDeferred = async { repo.getAllPatternsOnce() }
             val windowSecondsDeferred = async { settings.windowSeconds.first() }
-            patternsDeferred.await() to windowSecondsDeferred.await()
+            val isContactDeferred = async { contacts.isContact(number) }
+            Triple(patternsDeferred.await(), windowSecondsDeferred.await(), isContactDeferred.await())
         }
 
-        Log.i(TAG, "Loaded ${patterns.size} blacklist pattern(s), window=${windowSeconds}s")
+        Log.i(TAG, "Loaded ${patterns.size} blacklist pattern(s), window=${windowSeconds}s, isContact=$isContact")
+
+        if (isContact) {
+            Log.i(TAG, "ALLOW (contact): '$number'")
+            repo.recordCall(RecentCall(
+                number = number,
+                timestamp = System.currentTimeMillis(),
+                allowed = true
+            ))
+            respondToCall(callDetails, CallResponse.Builder().build())
+            return
+        }
+
         patterns.forEach { Log.i(TAG, "  pattern: '${it.pattern}' label='${it.label}'") }
 
         val digits = number.filter { it.isDigit() }
