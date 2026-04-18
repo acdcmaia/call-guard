@@ -6,11 +6,14 @@ import android.os.Handler
 import android.os.Looper
 import android.provider.ContactsContract
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 
 class ContactsRepository(private val context: Context) {
 
     @Volatile private var cache: Set<String>? = null
+    private val cacheMutex = Mutex()
 
     init {
         context.contentResolver.registerContentObserver(
@@ -26,7 +29,7 @@ class ContactsRepository(private val context: Context) {
         val digits = number.filter { it.isDigit() }
         if (digits.length < 4) return@withContext false
 
-        val contactDigits = cache ?: loadCache()
+        val contactDigits = cache ?: cacheMutex.withLock { cache ?: loadCache() }
         contactDigits.any { cd ->
             digits.endsWith(cd.takeLast(8)) || cd.endsWith(digits.takeLast(8))
         }

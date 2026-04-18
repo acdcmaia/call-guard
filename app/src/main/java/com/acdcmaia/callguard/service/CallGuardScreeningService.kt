@@ -3,11 +3,14 @@ package com.acdcmaia.callguard.service
 import android.telecom.Call
 import android.telecom.CallScreeningService
 import android.util.Log
+import com.acdcmaia.callguard.BuildConfig
 import com.acdcmaia.callguard.CallGuardApp
 import com.acdcmaia.callguard.data.db.BlockReason
 import com.acdcmaia.callguard.data.db.RecentCall
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.first
@@ -17,9 +20,16 @@ private const val TAG = "CallGuard"
 
 class CallGuardScreeningService : CallScreeningService() {
 
+    private val serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+
     override fun onCreate() {
         super.onCreate()
-        Log.i(TAG, "CallGuardScreeningService onCreate — service bound by telecom")
+        if (BuildConfig.DEBUG) Log.i(TAG, "CallGuardScreeningService onCreate — service bound by telecom")
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        serviceScope.cancel()
     }
 
     override fun onScreenCall(callDetails: Call.Details) {
@@ -29,9 +39,9 @@ class CallGuardScreeningService : CallScreeningService() {
             return
         }
 
-        Log.i(TAG, "onScreenCall: raw number='$number'")
+        if (BuildConfig.DEBUG) Log.i(TAG, "onScreenCall: received call")
 
-        CoroutineScope(Dispatchers.IO).launch {
+        serviceScope.launch {
             try {
                 screenCall(callDetails, number)
             } catch (e: Exception) {
@@ -41,8 +51,11 @@ class CallGuardScreeningService : CallScreeningService() {
         }
     }
 
+    private val app: CallGuardApp
+        get() = application as? CallGuardApp
+            ?: throw IllegalStateException("Application deve ser CallGuardApp")
+
     private suspend fun screenCall(callDetails: Call.Details, number: String) {
-        val app = application as CallGuardApp
         val repo = app.callRepository
         val settings = app.settingsRepository
         val contacts = app.contactsRepository
@@ -54,10 +67,10 @@ class CallGuardScreeningService : CallScreeningService() {
             Triple(patternsDeferred.await(), windowSecondsDeferred.await(), isContactDeferred.await())
         }
 
-        Log.i(TAG, "Loaded ${patterns.size} blacklist pattern(s), window=${windowSeconds}s, isContact=$isContact")
+        if (BuildConfig.DEBUG) Log.i(TAG, "Loaded ${patterns.size} pattern(s), window=${windowSeconds}s, isContact=$isContact")
 
         if (isContact) {
-            Log.i(TAG, "ALLOW (contact): '$number'")
+            if (BuildConfig.DEBUG) Log.i(TAG, "ALLOW (contact)")
             repo.recordCall(RecentCall(
                 number = number,
                 timestamp = System.currentTimeMillis(),
@@ -67,17 +80,17 @@ class CallGuardScreeningService : CallScreeningService() {
             return
         }
 
-        patterns.forEach { Log.i(TAG, "  pattern: '${it.pattern}' label='${it.label}'") }
+        if (BuildConfig.DEBUG) patterns.forEach { Log.i(TAG, "  pattern: '${it.pattern}' label='${it.label}'") }
 
         val digits = number.filter { it.isDigit() }
         val matchedPattern = patterns.firstOrNull { entry ->
             val matched = digits.contains(entry.pattern)
-            if (matched) Log.i(TAG, "  MATCHED '${entry.pattern}' against digits '$digits'")
+            if (BuildConfig.DEBUG && matched) Log.i(TAG, "  MATCHED pattern '${entry.pattern}'")
             matched
         }
 
         if (matchedPattern != null) {
-            Log.i(TAG, "BLOCK (blacklist): '$number' matched '${matchedPattern.pattern}'")
+            if (BuildConfig.DEBUG) Log.i(TAG, "BLOCK (blacklist): matched '${matchedPattern.pattern}'")
             repo.recordCall(RecentCall(
                 number = number,
                 timestamp = System.currentTimeMillis(),
@@ -95,10 +108,10 @@ class CallGuardScreeningService : CallScreeningService() {
         val since = System.currentTimeMillis() - windowSeconds * 1_000L
         val recent = repo.getRecentCallsSince(number, since)
 
-        Log.i(TAG, "Recent calls from '$number' in last ${windowSeconds}s: ${recent.size}")
+        if (BuildConfig.DEBUG) Log.i(TAG, "Recent calls in last ${windowSeconds}s: ${recent.size}")
 
         if (recent.isEmpty()) {
-            Log.i(TAG, "BLOCK (first call): '$number'")
+            if (BuildConfig.DEBUG) Log.i(TAG, "BLOCK (first call)")
             repo.recordCall(RecentCall(
                 number = number,
                 timestamp = System.currentTimeMillis(),
@@ -110,7 +123,7 @@ class CallGuardScreeningService : CallScreeningService() {
                 .setRejectCall(true)
                 .build())
         } else {
-            Log.i(TAG, "ALLOW (repeat call): '$number'")
+            if (BuildConfig.DEBUG) Log.i(TAG, "ALLOW (repeat call)")
             repo.recordCall(RecentCall(
                 number = number,
                 timestamp = System.currentTimeMillis(),

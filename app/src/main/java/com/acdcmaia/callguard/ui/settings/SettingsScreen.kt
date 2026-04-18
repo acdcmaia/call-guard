@@ -77,7 +77,7 @@ fun SettingsScreen() {
                     onValueChange = { v ->
                         val filtered = v.filter { it.isDigit() }
                         secondsInput = filtered
-                        val secs = filtered.toIntOrNull() ?: 0
+                        val secs = (filtered.toIntOrNull() ?: 0).coerceIn(0, 86400)
                         if (secs > 0) vm.setWindowSeconds(secs)
                     },
                     label = { Text("Segundos") },

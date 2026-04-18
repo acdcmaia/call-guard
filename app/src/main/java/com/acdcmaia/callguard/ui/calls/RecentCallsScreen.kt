@@ -35,19 +35,28 @@ fun RecentCallsScreen() {
     )
     val calls by vm.calls.collectAsState()
 
-    val permissionLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { granted -> if (granted) vm.loadHistory() }
+    val multiplePermissionsLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { results -> if (results.values.all { it }) vm.loadHistory() }
 
     val lifecycleOwner = LocalLifecycleOwner.current
     LaunchedEffect(lifecycleOwner) {
         lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
-            if (ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CALL_LOG)
-                == PackageManager.PERMISSION_GRANTED
-            ) {
+            val callLogGranted = ContextCompat.checkSelfPermission(
+                context, Manifest.permission.READ_CALL_LOG
+            ) == PackageManager.PERMISSION_GRANTED
+            val contactsGranted = ContextCompat.checkSelfPermission(
+                context, Manifest.permission.READ_CONTACTS
+            ) == PackageManager.PERMISSION_GRANTED
+
+            if (callLogGranted && contactsGranted) {
                 vm.loadHistory()
             } else {
-                permissionLauncher.launch(Manifest.permission.READ_CALL_LOG)
+                val toRequest = buildList {
+                    if (!callLogGranted) add(Manifest.permission.READ_CALL_LOG)
+                    if (!contactsGranted) add(Manifest.permission.READ_CONTACTS)
+                }.toTypedArray()
+                multiplePermissionsLauncher.launch(toRequest)
             }
         }
     }
