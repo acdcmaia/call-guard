@@ -196,7 +196,7 @@ Qualquer exceção não tratada durante a triagem resulta em `respondToCall` com
 Bloquear apenas com `setDisallowCall` silencia a chamada do lado do destinatário mas o chamador continua a ouvir toque. Adicionar `setRejectCall` envia sinal de ocupado imediatamente, encerrando a chamada no lado do chamador também.
 
 **Histórico com dupla fonte**
-O log do sistema só regista chamadas após o fim da ligação. Para mostrar chamadas bloqueadas imediatamente, o `CallLogRepository` inclui registos do Room sem correspondência no log do sistema (`appOnly = true`). Quando o log do sistema eventualmente regista a entrada, ela substitui a entrada `appOnly` no próximo refresh.
+O log do sistema só regista chamadas após o fim da ligação. Para mostrar chamadas bloqueadas imediatamente, o `CallLogRepository` inclui registros do Room sem correspondência no log do sistema (`appOnly = true`). Quando o log do sistema eventualmente regista a entrada, ela substitui a entrada `appOnly` no próximo refresh.
 
 **`launchMode="singleTop"` na MainActivity**
 O telecom envia `POST_CALL` para a Activity após cada chamada. Sem `singleTop`, cada intent criaria uma nova instância da Activity. Com `singleTop`, o intent é entregue via `onNewIntent()` na instância existente.
@@ -208,10 +208,10 @@ O Material3 `TooltipDefaults` não expõe controlo de posição vertical. É usa
 
 ## Limitação confirmada — MIUI
 
-Em dispositivos Xiaomi com MIUI, o framework telecom **ignora o `CallScreeningService` para números guardados nos contactos**, aprovando-os automaticamente sem invocar `onScreenCall`.
+Em dispositivos Xiaomi com MIUI, o framework telecom **ignora o `CallScreeningService` para números guardados nos contatos**, aprovando-os automaticamente sem invocar `onScreenCall`.
 
 **Confirmação:** testado adicionando e removendo o mesmo número da agenda. Com o número na agenda, `onScreenCall` nunca é invocado (logcat do `system_server` mostra `[Allow, contact exists]`, zero logs `CallGuard`). Com o número removido da agenda, o serviço de triagem é invocado normalmente e o bloqueio funciona.
 
-**Implicação:** o app funciona corretamente para números desconhecidos (não guardados nos contactos). Chamadas de contactos guardados passam sempre, independentemente da blacklist ou da janela de tempo.
+**Implicação:** o app funciona corretamente para números desconhecidos (não guardados nos contatos). Chamadas de contatos guardados passam sempre, independentemente da blacklist ou da janela de tempo.
 
 **Workaround possível:** não existe solução via `CallScreeningService` — é um bypass do próprio MIUI. A restrição de bateria do MIUI também pode impedir o binding do serviço — definir o app como "Sem restrições" em Configurações → Aplicativos → Call Guard → Bateria.
