@@ -3,6 +3,7 @@ package com.acdcmaia.callguard
 import android.app.Application
 import com.acdcmaia.callguard.data.CallLogRepository
 import com.acdcmaia.callguard.data.CallRepository
+import com.acdcmaia.callguard.data.ContactsRepository
 import com.acdcmaia.callguard.data.SettingsRepository
 import com.acdcmaia.callguard.data.db.AppDatabase
 
