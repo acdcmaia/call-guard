@@ -13,7 +13,7 @@ class SettingsRepository(private val context: Context) {
     private val WINDOW_SECONDS = intPreferencesKey("window_seconds")
 
     val windowSeconds: Flow<Int> = context.dataStore.data.map { prefs ->
-        prefs[WINDOW_SECONDS] ?: 300
+        prefs[WINDOW_SECONDS] ?: 120
     }
 
     suspend fun setWindowSeconds(seconds: Int) {
