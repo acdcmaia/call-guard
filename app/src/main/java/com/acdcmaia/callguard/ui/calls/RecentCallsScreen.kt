@@ -60,7 +60,7 @@ fun RecentCallsScreen() {
             if (callLogGranted && contactsGranted) {
                 permissionsDenied = false
                 vm.loadHistory()
-            } else {
+            } else if (!permissionsDenied) {
                 val toRequest = buildList {
                     if (!callLogGranted) add(Manifest.permission.READ_CALL_LOG)
                     if (!contactsGranted) add(Manifest.permission.READ_CONTACTS)
@@ -94,9 +94,11 @@ fun RecentCallsScreen() {
     }
 }
 
+private val dateFormatter = SimpleDateFormat("dd/MM/yy HH:mm", Locale.getDefault())
+
 @Composable
 private fun CallHistoryRow(item: CallHistoryItem) {
-    val fmt = SimpleDateFormat("dd/MM/yy HH:mm", Locale.getDefault())
+    val fmt = dateFormatter
 
     val typeLabel = when (item.callType) {
         CallLog.Calls.INCOMING_TYPE -> "Recebida"
