@@ -10,17 +10,20 @@ import com.acdcmaia.callguard.data.db.RecentCall
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 private const val TAG = "CallGuard"
 
 class CallGuardScreeningService : CallScreeningService() {
 
     private val serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    private val screenMutex = Mutex()
 
     override fun onCreate() {
         super.onCreate()
@@ -55,7 +58,7 @@ class CallGuardScreeningService : CallScreeningService() {
         get() = application as? CallGuardApp
             ?: throw IllegalStateException("Application deve ser CallGuardApp")
 
-    private suspend fun screenCall(callDetails: Call.Details, number: String) {
+    private suspend fun screenCall(callDetails: Call.Details, number: String) = screenMutex.withLock {
         val repo = app.callRepository
         val settings = app.settingsRepository
         val contacts = app.contactsRepository

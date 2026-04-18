@@ -8,7 +8,7 @@ interface RecentCallDao {
     @Query("SELECT * FROM recent_calls ORDER BY timestamp DESC LIMIT 100")
     fun getAll(): Flow<List<RecentCall>>
 
-    @Query("SELECT * FROM recent_calls WHERE number = :number AND timestamp > :since")
+    @Query("SELECT * FROM recent_calls WHERE number = :number AND timestamp > :since LIMIT 1")
     suspend fun getCallsSince(number: String, since: Long): List<RecentCall>
 
     @Insert

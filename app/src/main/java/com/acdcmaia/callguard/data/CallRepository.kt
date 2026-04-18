@@ -20,13 +20,4 @@ class CallRepository(private val db: AppDatabase) {
 
     suspend fun getAllPatternsOnce(): List<BlacklistPattern> =
         db.blacklistDao().getAllOnce()
-
-    companion object {
-        @Volatile private var instance: CallRepository? = null
-
-        fun getInstance(db: AppDatabase): CallRepository =
-            instance ?: synchronized(this) {
-                instance ?: CallRepository(db).also { instance = it }
-            }
-    }
 }

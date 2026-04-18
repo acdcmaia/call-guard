@@ -50,13 +50,4 @@ class ContactsRepository(private val context: Context) {
         cache = result
         result
     }
-
-    companion object {
-        @Volatile private var instance: ContactsRepository? = null
-
-        fun getInstance(context: Context): ContactsRepository =
-            instance ?: synchronized(this) {
-                instance ?: ContactsRepository(context).also { instance = it }
-            }
-    }
 }

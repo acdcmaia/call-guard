@@ -20,6 +20,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.acdcmaia.callguard.BuildConfig
 import com.acdcmaia.callguard.callGuardApp
+import com.acdcmaia.callguard.data.SettingsRepository
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -29,7 +30,7 @@ fun SettingsScreen() {
     val vm: SettingsViewModel = viewModel(
         factory = SettingsViewModel.factory(context.callGuardApp)
     )
-    val windowSeconds by vm.windowSeconds.collectAsState(initial = 120)
+    val windowSeconds by vm.windowSeconds.collectAsState(initial = SettingsRepository.DEFAULT_WINDOW_SECONDS)
     var secondsInput by remember { mutableStateOf(windowSeconds.toString()) }
     LaunchedEffect(windowSeconds) {
         val current = secondsInput.toIntOrNull()
