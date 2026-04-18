@@ -13,9 +13,14 @@ import com.acdcmaia.callguard.MainActivity
 import com.acdcmaia.callguard.R
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 
 class CallGuardForegroundService : Service() {
+
+    private val serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    private var pruned = false
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         createNotificationChannel()
@@ -35,14 +40,26 @@ class CallGuardForegroundService : Service() {
             .build()
 
         startForeground(NOTIFICATION_ID, notification)
-        pruneOldCalls()
+        if (!pruned) {
+            pruned = true
+            pruneOldCalls()
+        }
         return START_STICKY
     }
 
+    private val app: CallGuardApp
+        get() = application as? CallGuardApp
+            ?: throw IllegalStateException("Application deve ser CallGuardApp")
+
     private fun pruneOldCalls() {
-        val dao = (application as CallGuardApp).database.recentCallDao()
+        val dao = app.database.recentCallDao()
         val cutoff = System.currentTimeMillis() - 30L * 24 * 60 * 60 * 1_000
-        CoroutineScope(Dispatchers.IO).launch { dao.deleteOlderThan(cutoff) }
+        serviceScope.launch { dao.deleteOlderThan(cutoff) }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        serviceScope.cancel()
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
