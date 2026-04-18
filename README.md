@@ -24,40 +24,40 @@ flowchart LR
 
 ## Instalação
 
-1. Vai a [Releases](../../releases)
-2. Faz download do ficheiro `.apk` mais recente
-3. Instala no dispositivo (pode ser necessário permitir instalação de fontes desconhecidas em Definições → Segurança)
+1. Vá em [Releases](../../releases)
+2. Faça o download do arquivo `.apk` mais recente
+3. Instale no dispositivo (pode ser necessário permitir instalação de fontes desconhecidas)
 
 ## Utilização
 
 ### Janela de tempo
-Em **Configurações**, define quantos segundos o app aguarda por uma repetição de chamada. Default: 120 segundos.
+Em **Configurações**, defina quantos segundos o app aguarda por uma repetição de chamada. Default: 120 segundos.
 
 ### Lista negra
-Em **Lista Negra**, adiciona sequências de dígitos a bloquear. Qualquer chamada cujo número contenha essa sequência será rejeitada.
+Em **Lista Negra**, adicione sequências de dígitos. Qualquer chamada cujo número contenha essa sequência será rejeitada.
 
-> Ex.: a sequência `98181` bloqueia chamadas de `021XXXXXXXX`
+> Ex.: a sequência `91234` bloqueia chamadas de `021XXXXXXXXX`
 
 ### Histórico
-Em **Chamadas**, vê o registo de todas as chamadas processadas. Chamadas bloqueadas aparecem a vermelho.
+Em **Chamadas**, constam os registos de todas as chamadas processadas. Chamadas bloqueadas aparecem a vermelho.
 
-## Compilar o projeto
+## Compilação do projeto
 
 **Pré-requisitos:**
 - Android Studio Hedgehog ou superior
 - JDK 11
 
 **Passos:**
-1. Clona o repositório
+1. Clone o repositório
    ```bash
    git clone https://github.com/acdcmaia/call-guard.git
    ```
-2. Abre o projeto no Android Studio
-3. Faz `Build → Build APK(s)`
+2. Abra o projeto no Android Studio
+3. Faça `Build → Build APK(s)`
 
 ## Limitações conhecidas
 
-**MIUI (Xiaomi):** o sistema ignora o serviço de triagem para números guardados nos contactos, aprovando-os automaticamente. O app funciona corretamente apenas para números não guardados na agenda.
+**MIUI (Xiaomi) e Samsung:** o sistema ignora o serviço de triagem para números guardados nos contatos, aprovando-os automaticamente. O app funciona corretamente apenas para números não guardados na agenda.
 
 ## Licença
 
