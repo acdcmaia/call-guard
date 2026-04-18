@@ -13,7 +13,7 @@ class SettingsRepository(private val context: Context) {
     private val WINDOW_SECONDS = intPreferencesKey("window_seconds")
 
     val windowSeconds: Flow<Int> = context.dataStore.data.map { prefs ->
-        prefs[WINDOW_SECONDS] ?: 120
+        prefs[WINDOW_SECONDS] ?: DEFAULT_WINDOW_SECONDS
     }
 
     suspend fun setWindowSeconds(seconds: Int) {
@@ -21,11 +21,6 @@ class SettingsRepository(private val context: Context) {
     }
 
     companion object {
-        @Volatile private var instance: SettingsRepository? = null
-
-        fun getInstance(context: Context): SettingsRepository =
-            instance ?: synchronized(this) {
-                instance ?: SettingsRepository(context).also { instance = it }
-            }
+        const val DEFAULT_WINDOW_SECONDS = 120
     }
 }
