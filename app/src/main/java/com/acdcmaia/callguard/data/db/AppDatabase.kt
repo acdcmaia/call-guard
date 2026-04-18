@@ -11,7 +11,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 @Database(
     entities = [BlacklistPattern::class, RecentCall::class],
     version = 2,
-    exportSchema = false
+    exportSchema = true
 )
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
