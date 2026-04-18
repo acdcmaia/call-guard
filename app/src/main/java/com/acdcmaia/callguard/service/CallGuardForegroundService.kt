@@ -8,8 +8,12 @@ import android.content.Context
 import android.content.Intent
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
+import com.acdcmaia.callguard.CallGuardApp
 import com.acdcmaia.callguard.MainActivity
 import com.acdcmaia.callguard.R
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 class CallGuardForegroundService : Service() {
 
@@ -31,7 +35,14 @@ class CallGuardForegroundService : Service() {
             .build()
 
         startForeground(NOTIFICATION_ID, notification)
+        pruneOldCalls()
         return START_STICKY
+    }
+
+    private fun pruneOldCalls() {
+        val dao = (application as CallGuardApp).database.recentCallDao()
+        val cutoff = System.currentTimeMillis() - 30L * 24 * 60 * 60 * 1_000
+        CoroutineScope(Dispatchers.IO).launch { dao.deleteOlderThan(cutoff) }
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
