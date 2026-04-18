@@ -2,7 +2,7 @@
 
 Aplicativo Android de triagem de chamadas. Bloqueia automaticamente chamadas de números desconhecidos e permite configurar uma lista negra baseada em sequências numéricas.
 
-**Regra principal:** uma chamada é permitida somente se o número chamador já tiver ligado anteriormente dentro da janela de tempo configurada. Chamadas de números na lista negra são sempre bloqueadas.
+**Regra principal:** chamadas de números na agenda são sempre permitidas. Para os demais, a chamada é permitida somente se o número já tiver ligado anteriormente dentro da janela de tempo configurada. Chamadas de números na lista negra são sempre bloqueadas.
 
 ---
 
@@ -22,6 +22,7 @@ call-guard/
 │       │   ├── CallRepository.kt    # Blacklist + chamadas recentes
 │       │   ├── CallLogRepository.kt # Histórico mesclado (Room + sistema)
 │       │   ├── SettingsRepository.kt# Preferências (DataStore)
+│       │   ├── ContactsRepository.kt# Verificação de contatos da agenda
 │       │   └── CallHistoryItem.kt   # Modelo de exibição do histórico
 │       ├── service/
 │       │   ├── CallGuardScreeningService.kt  # Triagem de chamadas
@@ -44,6 +45,7 @@ Classe `Application`. Inicializa e expõe como singletons:
 - `CallRepository`
 - `CallLogRepository`
 - `SettingsRepository`
+- `ContactsRepository`
 
 ### `MainActivity`
 - Verifica se o app possui o `ROLE_CALL_SCREENING` do Android
@@ -55,9 +57,13 @@ Classe `Application`. Inicializa e expõe como singletons:
 ### `CallGuardScreeningService`
 Implementa `CallScreeningService` do Android. É vinculado pelo framework telecom a cada chamada recebida.
 
-- Executa a lógica de triagem em `Dispatchers.IO` com `coroutineScope { async }` para carregar blacklist e configurações em paralelo
+- Executa a lógica de triagem em `Dispatchers.IO` com `coroutineScope { async }` para carregar blacklist, configurações e verificação de contato em paralelo
+- Se o número estiver na agenda, permite imediatamente (espelhando o comportamento das OEMs)
 - Sempre chama `respondToCall()`, inclusive em caso de exceção (fallback: permitir)
 - Usa `setDisallowCall(true)` + `setRejectCall(true)` para bloquear: o chamador recebe sinal de ocupado imediatamente
+
+### `ContactsRepository`
+Consulta `ContactsContract.CommonDataKinds.Phone` para verificar se um número pertence à agenda do dispositivo. A comparação usa os últimos 8 dígitos para tolerar diferenças de código de país e formatação.
 
 ### `CallGuardForegroundService`
 Serviço de notificação persistente (`foregroundServiceType="dataSync"`). Mantém o processo do app vivo para garantir que o `CallGuardScreeningService` seja vinculado pelo telecom sem ser morto pelo sistema.
@@ -113,8 +119,11 @@ Entradas do Room sem correspondência no log do sistema (chamadas bloqueadas ain
 flowchart TD
     A([Chamada recebida]) --> B{handle nulo?}
     B -- Sim --> Z1([Permitir — fallback])
-    B -- Não --> C[Carregar blacklist e\nwindow_seconds em paralelo]
-    C --> D{Dígitos do número\ncontêm algum padrão\nda blacklist?}
+    B -- Não --> C[Carregar blacklist, window_seconds\ne verificar contato em paralelo]
+    C --> CK{Número está\nna agenda?}
+    CK -- Sim --> ZC[Gravar RecentCall\nallowed=true]
+    ZC --> Z5([Permitir])
+    CK -- Não --> D{Dígitos do número\ncontêm algum padrão\nda blacklist?}
     D -- Sim --> E[Gravar RecentCall\nblockReason=BLACKLIST]
     E --> Z2([Rejeitar\nsetDisallowCall + setRejectCall])
     D -- Não --> F[Consultar chamadas\ndo mesmo número\ndentro da janela]
@@ -176,6 +185,7 @@ Bottom navigation com 3 abas:
 |---|---|
 | `ROLE_CALL_SCREENING` | Obrigatório para o `CallScreeningService` ser vinculado pelo telecom |
 | `READ_PHONE_STATE` | Receber broadcast de estado de chamada (`PhoneStateReceiver`) |
+| `READ_CONTACTS` | Verificar se o número chamador está na agenda do dispositivo |
 | `READ_CALL_LOG` | Ler o log de chamadas do sistema para o histórico |
 | `FOREGROUND_SERVICE` / `FOREGROUND_SERVICE_DATA_SYNC` | Manter o serviço persistente ativo |
 | `POST_NOTIFICATIONS` | Notificação do `CallGuardForegroundService` |
@@ -187,7 +197,10 @@ O role é solicitado via `RoleManager.createRequestRoleIntent`. Cada reinstalaç
 ## Decisões de arquitetura
 
 **`coroutineScope { async }` no serviço de triagem**
-Blacklist e configurações são carregadas em paralelo dentro de `coroutineScope`. Usar `CoroutineScope(Dispatchers.IO).async` criaria scopes não gerenciados; `coroutineScope` garante concorrência estruturada e propagação de exceções.
+Blacklist, configurações e verificação de contato são carregadas em paralelo dentro de `coroutineScope`. Usar `CoroutineScope(Dispatchers.IO).async` criaria scopes não gerenciados; `coroutineScope` garante concorrência estruturada e propagação de exceções.
+
+**Verificação de contatos no próprio app**
+Mesmo em OEMs que já fazem bypass automático (MIUI, Samsung), a verificação de contatos é feita pelo próprio app. Isso garante comportamento consistente em dispositivos onde o `onScreenCall` é invocado para contatos, e espelha a decisão que as OEMs tomariam.
 
 **Fallback always-allow**
 Qualquer exceção não tratada durante a triagem resulta em `respondToCall` com resposta padrão (permitir). O Android impõe um timeout; não chamar `respondToCall` também deixaria a chamada passar, mas geraria ANR no serviço.
@@ -206,12 +219,14 @@ O Material3 `TooltipDefaults` não expõe controlo de posição vertical. É usa
 
 ---
 
-## Limitação confirmada — MIUI
+## Comportamento em OEMs — MIUI e Samsung
 
-Em dispositivos Xiaomi com MIUI, o framework telecom **ignora o `CallScreeningService` para números guardados nos contatos**, aprovando-os automaticamente sem invocar `onScreenCall`.
+Em dispositivos Xiaomi (MIUI) e Samsung, o framework telecom **ignora o `CallScreeningService` para números salvos nos contatos**, aprovando-os automaticamente sem invocar `onScreenCall`.
 
 **Confirmação:** testado adicionando e removendo o mesmo número da agenda. Com o número na agenda, `onScreenCall` nunca é invocado (logcat do `system_server` mostra `[Allow, contact exists]`, zero logs `CallGuard`). Com o número removido da agenda, o serviço de triagem é invocado normalmente e o bloqueio funciona.
 
-**Implicação:** o app funciona corretamente para números desconhecidos (não guardados nos contatos). Chamadas de contatos guardados passam sempre, independentemente da blacklist ou da janela de tempo.
+**Comportamento do app:** o `CallGuardScreeningService` também verifica a agenda via `ContactsRepository` como primeira etapa da triagem. Em OEMs onde o bypass não existe, o app garante o mesmo comportamento: contatos são sempre permitidos. Em OEMs onde o bypass já existe (MIUI, Samsung), a verificação interna é redundante mas inofensiva.
 
-**Workaround possível:** não existe solução via `CallScreeningService` — é um bypass do próprio MIUI. A restrição de bateria do MIUI também pode impedir o binding do serviço — definir o app como "Sem restrições" em Configurações → Aplicativos → Call Guard → Bateria.
+**Implicação prática:** chamadas de contatos salvos na agenda nunca são bloqueadas, em qualquer dispositivo. A blacklist e a janela de tempo se aplicam apenas a números desconhecidos.
+
+**Restrição de bateria no MIUI:** pode impedir o binding do serviço para números desconhecidos — definir o app como "Sem restrições" em Configurações → Aplicativos → Call Guard → Bateria.
