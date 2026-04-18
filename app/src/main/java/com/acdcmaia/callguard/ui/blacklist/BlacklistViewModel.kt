@@ -1,15 +1,16 @@
 package com.acdcmaia.callguard.ui.blacklist
 
-import android.app.Application
-import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.acdcmaia.callguard.CallGuardApp
+import com.acdcmaia.callguard.data.CallRepository
 import com.acdcmaia.callguard.data.db.BlacklistPattern
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
 
-class BlacklistViewModel(app: Application) : AndroidViewModel(app) {
-    private val repo = (app as CallGuardApp).callRepository
+class BlacklistViewModel(private val repo: CallRepository) : ViewModel() {
+
     val patterns: Flow<List<BlacklistPattern>> = repo.blacklistPatterns
 
     fun addPattern(pattern: String, label: String) {
@@ -32,4 +33,12 @@ class BlacklistViewModel(app: Application) : AndroidViewModel(app) {
 
     fun isValidPattern(pattern: String): Boolean =
         pattern.isNotBlank() && pattern.all { it.isDigit() }
+
+    companion object {
+        fun factory(app: CallGuardApp) = object : ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : ViewModel> create(modelClass: Class<T>): T =
+                BlacklistViewModel(app.callRepository) as T
+        }
+    }
 }

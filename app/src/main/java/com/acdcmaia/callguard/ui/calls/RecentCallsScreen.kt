@@ -20,6 +20,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.acdcmaia.callguard.CallGuardApp
 import com.acdcmaia.callguard.data.CallHistoryItem
 import com.acdcmaia.callguard.data.db.BlockReason
 import java.text.SimpleDateFormat
@@ -27,8 +28,11 @@ import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun RecentCallsScreen(vm: RecentCallsViewModel = viewModel()) {
+fun RecentCallsScreen() {
     val context = LocalContext.current
+    val vm: RecentCallsViewModel = viewModel(
+        factory = RecentCallsViewModel.factory(context.applicationContext as CallGuardApp)
+    )
     val calls by vm.calls.collectAsState()
 
     val permissionLauncher = rememberLauncherForActivityResult(
