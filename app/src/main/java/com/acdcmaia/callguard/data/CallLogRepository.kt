@@ -69,19 +69,21 @@ class CallLogRepository(
             arrayOf(CallLog.Calls.NUMBER, CallLog.Calls.DATE, CallLog.Calls.TYPE),
             "${CallLog.Calls.TYPE} != ?",
             arrayOf(CallLog.Calls.OUTGOING_TYPE.toString()),
-            "${CallLog.Calls.DATE} DESC LIMIT $limit"
+            "${CallLog.Calls.DATE} DESC"
         ) ?: return calls
 
         cursor.use {
             val numIdx = it.getColumnIndex(CallLog.Calls.NUMBER)
             val dateIdx = it.getColumnIndex(CallLog.Calls.DATE)
             val typeIdx = it.getColumnIndex(CallLog.Calls.TYPE)
-            while (it.moveToNext()) {
+            var count = 0
+            while (it.moveToNext() && count < limit) {
                 calls.add(SystemCall(
                     number = it.getString(numIdx) ?: "",
                     timestamp = it.getLong(dateIdx),
                     type = it.getInt(typeIdx)
                 ))
+                count++
             }
         }
         return calls
