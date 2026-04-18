@@ -30,7 +30,11 @@ fun SettingsScreen() {
         factory = SettingsViewModel.factory(context.callGuardApp)
     )
     val windowSeconds by vm.windowSeconds.collectAsState(initial = 120)
-    var secondsInput by remember(windowSeconds) { mutableStateOf(windowSeconds.toString()) }
+    var secondsInput by remember { mutableStateOf(windowSeconds.toString()) }
+    LaunchedEffect(windowSeconds) {
+        val current = secondsInput.toIntOrNull()
+        if (current != windowSeconds) secondsInput = windowSeconds.toString()
+    }
     var showAbout by remember { mutableStateOf(false) }
     val tooltipState = rememberTooltipState(isPersistent = true)
     val scope = rememberCoroutineScope()
@@ -75,10 +79,7 @@ fun SettingsScreen() {
                 OutlinedTextField(
                     value = secondsInput,
                     onValueChange = { v ->
-                        val filtered = v.filter { it.isDigit() }
-                        secondsInput = filtered
-                        val secs = (filtered.toIntOrNull() ?: 1).coerceIn(1, 86400)
-                        vm.setWindowSeconds(secs)
+                        secondsInput = v.filter { it.isDigit() }
                     },
                     label = { Text("Segundos") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
@@ -86,7 +87,14 @@ fun SettingsScreen() {
                     modifier = Modifier
                         .fillMaxWidth()
                         .focusable()
-                        .onFocusChanged { if (it.isFocused) scope.launch { tooltipState.show() } }
+                        .onFocusChanged { focusState ->
+                            if (focusState.isFocused) {
+                                scope.launch { tooltipState.show() }
+                            } else {
+                                val secs = (secondsInput.toIntOrNull() ?: 1).coerceIn(1, 86400)
+                                vm.setWindowSeconds(secs)
+                            }
+                        }
                 )
             }
 
