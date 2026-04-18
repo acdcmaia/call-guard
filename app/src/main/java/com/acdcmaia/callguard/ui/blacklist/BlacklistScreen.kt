@@ -22,7 +22,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.PopupPositionProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.ui.platform.LocalContext
-import com.acdcmaia.callguard.CallGuardApp
+import com.acdcmaia.callguard.callGuardApp
 import com.acdcmaia.callguard.data.db.BlacklistPattern
 import kotlinx.coroutines.launch
 
@@ -31,7 +31,7 @@ import kotlinx.coroutines.launch
 fun BlacklistScreen() {
     val context = LocalContext.current
     val vm: BlacklistViewModel = viewModel(
-        factory = BlacklistViewModel.factory(context.applicationContext as CallGuardApp)
+        factory = BlacklistViewModel.factory(context.callGuardApp)
     )
     val patterns by vm.patterns.collectAsState(initial = emptyList())
     var showAddDialog by remember { mutableStateOf(false) }
