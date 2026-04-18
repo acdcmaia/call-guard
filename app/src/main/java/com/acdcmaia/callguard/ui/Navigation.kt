@@ -1,20 +1,20 @@
 package com.acdcmaia.callguard.ui
 
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Block
-import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.res.painterResource
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.acdcmaia.callguard.R
 import com.acdcmaia.callguard.ui.blacklist.BlacklistScreen
 import com.acdcmaia.callguard.ui.calls.RecentCallsScreen
 import com.acdcmaia.callguard.ui.settings.SettingsScreen
@@ -39,8 +39,8 @@ fun CallGuardNavigation() {
                     NavigationBarItem(
                         icon = {
                             when (screen) {
-                                Screen.Calls -> Icon(Icons.Default.History, contentDescription = null)
-                                Screen.Blacklist -> Icon(Icons.Default.Block, contentDescription = null)
+                                Screen.Calls -> Icon(painterResource(R.drawable.ic_tab_history), contentDescription = null)
+                                Screen.Blacklist -> Icon(painterResource(R.drawable.ic_tab_block), contentDescription = null)
                                 Screen.Settings -> Icon(Icons.Default.Settings, contentDescription = null)
                             }
                         },

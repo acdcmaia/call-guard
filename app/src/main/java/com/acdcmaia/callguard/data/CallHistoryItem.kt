@@ -7,10 +7,8 @@ data class CallHistoryItem(
     val contactName: String?,
     val timestamp: Long,
     val callType: Int,
-    val isBlacklisted: Boolean,
     val matchedPattern: String?,
     val matchedPatternLabel: String?,
-    val interceptedByApp: Boolean,
     val blockReason: BlockReason?,
     val appOnly: Boolean = false
 )

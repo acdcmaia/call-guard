@@ -23,8 +23,10 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.acdcmaia.callguard.callGuardApp
 import com.acdcmaia.callguard.data.CallHistoryItem
 import com.acdcmaia.callguard.data.db.BlockReason
-import java.text.SimpleDateFormat
-import java.util.*
+import java.time.Instant
+import java.time.LocalDateTime
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -94,11 +96,13 @@ fun RecentCallsScreen() {
     }
 }
 
-private val dateFormatter = SimpleDateFormat("dd/MM/yy HH:mm", Locale.getDefault())
+private val dateFormatter = DateTimeFormatter.ofPattern("dd/MM/yy HH:mm")
 
 @Composable
 private fun CallHistoryRow(item: CallHistoryItem) {
-    val fmt = dateFormatter
+    val formattedDate = LocalDateTime.ofInstant(
+        Instant.ofEpochMilli(item.timestamp), ZoneId.systemDefault()
+    ).format(dateFormatter)
 
     val typeLabel = when (item.callType) {
         CallLog.Calls.INCOMING_TYPE -> "Recebida"
@@ -133,7 +137,7 @@ private fun CallHistoryRow(item: CallHistoryItem) {
         },
         supportingContent = {
             Text(
-                "$statusLabel · ${fmt.format(Date(item.timestamp))}",
+                "$statusLabel · $formattedDate",
                 color = textColor,
                 style = MaterialTheme.typography.bodySmall
             )

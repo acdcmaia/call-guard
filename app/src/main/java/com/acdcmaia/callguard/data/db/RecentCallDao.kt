@@ -20,9 +20,10 @@ interface RecentCallDao {
     @Query("DELETE FROM recent_calls WHERE timestamp < :before")
     suspend fun deleteOlderThan(before: Long)
 
-    @Query("SELECT COUNT(*) FROM recent_calls WHERE blockReason IS NOT NULL")
-    fun countBlockedFlow(): Flow<Int>
+    // Conta apenas bloqueadas dentro das 100 mais recentes — consistente com o histórico visível
+    @Query("SELECT COUNT(*) FROM (SELECT blockReason FROM recent_calls ORDER BY timestamp DESC LIMIT 100) WHERE blockReason IS NOT NULL")
+    fun countBlockedFlow(): Flow<Long>
 
-    @Query("SELECT COUNT(*) FROM recent_calls WHERE blockReason IS NOT NULL")
-    suspend fun countBlockedOnce(): Int
+    @Query("SELECT COUNT(*) FROM (SELECT blockReason FROM recent_calls ORDER BY timestamp DESC LIMIT 100) WHERE blockReason IS NOT NULL")
+    suspend fun countBlockedOnce(): Long
 }
