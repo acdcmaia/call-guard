@@ -47,6 +47,21 @@ android {
         compose = true
         buildConfig = true
     }
+
+}
+
+tasks.whenTaskAdded {
+    if (name.startsWith("assemble")) {
+        doLast {
+            val variant = name.removePrefix("assemble").lowercase()
+            val apkDir = layout.buildDirectory.dir("outputs/apk/$variant").get().asFile
+            apkDir.listFiles()
+                ?.filter { it.extension == "apk" }
+                ?.forEach { apk ->
+                    apk.renameTo(File(apk.parent, "CallGuard-${android.defaultConfig.versionName}-$buildDate.apk"))
+                }
+        }
+    }
 }
 
 dependencies {
