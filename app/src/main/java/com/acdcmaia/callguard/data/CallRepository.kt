@@ -9,6 +9,10 @@ class CallRepository(private val db: AppDatabase) {
     val blacklistPatterns: Flow<List<BlacklistPattern>> = db.blacklistDao().getAll()
     val recentCalls: Flow<List<RecentCall>> = db.recentCallDao().getAll()
 
+    fun countBlockedFlow(): Flow<Long> = db.recentCallDao().countBlockedFlow()
+
+    suspend fun countBlockedOnce(): Long = db.recentCallDao().countBlockedOnce()
+
     suspend fun addPattern(pattern: BlacklistPattern) = db.blacklistDao().insert(pattern)
     suspend fun deletePattern(pattern: BlacklistPattern) = db.blacklistDao().delete(pattern)
     suspend fun updatePattern(pattern: BlacklistPattern) = db.blacklistDao().update(pattern)
@@ -20,4 +24,6 @@ class CallRepository(private val db: AppDatabase) {
 
     suspend fun getAllPatternsOnce(): List<BlacklistPattern> =
         db.blacklistDao().getAllOnce()
+
+    suspend fun pruneCallsBefore(cutoff: Long) = db.recentCallDao().deleteOlderThan(cutoff)
 }
