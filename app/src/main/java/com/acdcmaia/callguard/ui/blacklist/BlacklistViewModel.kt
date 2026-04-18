@@ -32,7 +32,7 @@ class BlacklistViewModel(private val repo: CallRepository) : ViewModel() {
     }
 
     fun isValidPattern(pattern: String): Boolean =
-        pattern.isNotBlank() && pattern.all { it.isDigit() }
+        pattern.length >= 4 && pattern.all { it.isDigit() }
 
     companion object {
         fun factory(app: CallGuardApp) = object : ViewModelProvider.Factory {

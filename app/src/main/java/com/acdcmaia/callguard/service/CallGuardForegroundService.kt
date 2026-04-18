@@ -22,9 +22,12 @@ class CallGuardForegroundService : Service() {
     private val serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private var pruned = false
 
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+    override fun onCreate() {
+        super.onCreate()
         createNotificationChannel()
+    }
 
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val openApp = PendingIntent.getActivity(
             this, 0,
             Intent(this, MainActivity::class.java),
@@ -34,7 +37,7 @@ class CallGuardForegroundService : Service() {
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle(getString(R.string.app_name))
             .setContentText(getString(R.string.notification_text))
-            .setSmallIcon(android.R.drawable.ic_menu_call)
+            .setSmallIcon(R.drawable.ic_notification)
             .setContentIntent(openApp)
             .setOngoing(true)
             .build()

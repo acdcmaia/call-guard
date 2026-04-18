@@ -87,13 +87,4 @@ class CallLogRepository(private val context: Context, private val db: AppDatabas
     }
 
     private data class SystemCall(val number: String, val timestamp: Long, val type: Int)
-
-    companion object {
-        @Volatile private var instance: CallLogRepository? = null
-
-        fun getInstance(context: Context, db: AppDatabase): CallLogRepository =
-            instance ?: synchronized(this) {
-                instance ?: CallLogRepository(context, db).also { instance = it }
-            }
-    }
 }

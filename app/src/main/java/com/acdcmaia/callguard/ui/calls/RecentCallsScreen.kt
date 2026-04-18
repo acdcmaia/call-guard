@@ -107,14 +107,13 @@ private fun CallHistoryRow(item: CallHistoryItem) {
         else -> "Chamada"
     }
 
-    val statusLabel = when {
-        item.blockReason == BlockReason.BLACKLIST -> "Bloqueada (lista negra): ${item.matchedPatternLabel}"
-        item.blockReason == BlockReason.FIRST_CALL -> "Bloqueada (1ª chamada)"
-        item.isBlacklisted -> "Lista negra: ${item.matchedPatternLabel}"
-        else -> typeLabel
+    val statusLabel = when (item.blockReason) {
+        BlockReason.BLACKLIST -> "Bloqueada (lista negra): ${item.matchedPatternLabel}"
+        BlockReason.FIRST_CALL -> "Bloqueada (1ª chamada)"
+        null -> typeLabel
     }
 
-    val isBlocked = item.blockReason != null || item.isBlacklisted
+    val isBlocked = item.blockReason != null
     val textColor = if (isBlocked) Color.Red else Color.Unspecified
 
     ListItem(
