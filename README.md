@@ -61,7 +61,7 @@ Em **Chamadas**, constam os registros de todas as chamadas processadas. Chamadas
 
 ## Limitações conhecidas
 
-**MIUI (Xiaomi) e Samsung:** o sistema ignora o serviço de triagem para números salvos nos contatos, aprovando-os automaticamente antes mesmo de consultar o app. O comportamento final é o mesmo — contatos sempre passam — e as chamadas continuam aparecendo no histórico, pois o app lê o log de chamadas do sistema.
+**MIUI (Xiaomi) e Samsung:** o sistema ignora o serviço de triagem para números salvos nos contatos, aprovando-os automaticamente antes mesmo de consultar o app. O comportamento final é o mesmo, contatos sempre são permitidos.
 
 **Restrição de bateria no MIUI:** pode impedir o funcionamento do serviço. Definir o app como "Sem restrições" em Configurações → Aplicativos → Call Guard → Bateria.
 
