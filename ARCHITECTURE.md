@@ -206,8 +206,12 @@ O Material3 `TooltipDefaults` não expõe controlo de posição vertical. É usa
 
 ---
 
-## Limitação conhecida — MIUI
+## Limitação confirmada — MIUI
 
-Em dispositivos Xiaomi com MIUI, o framework telecom pode ignorar o `CallScreeningService` para números guardados nos contactos, aprovando-os automaticamente antes de invocar `onScreenCall`. O diagnóstico foi feito via `PhoneStateReceiver` (que recebe o estado de chamada mesmo quando `onScreenCall` não é invocado) e via análise de logcat do `system_server` (resultado `[Allow, contact exists]` sem nenhum log `CallGuard`).
+Em dispositivos Xiaomi com MIUI, o framework telecom **ignora o `CallScreeningService` para números guardados nos contactos**, aprovando-os automaticamente sem invocar `onScreenCall`.
 
-**Workaround:** apagar o contacto da agenda antes de testar, ou testar com número não guardado. A restrição de bateria do MIUI também pode impedir o binding do serviço — definir o app como "Sem restrições" em Configurações → Aplicativos → Call Guard → Bateria.
+**Confirmação:** testado adicionando e removendo o mesmo número da agenda. Com o número na agenda, `onScreenCall` nunca é invocado (logcat do `system_server` mostra `[Allow, contact exists]`, zero logs `CallGuard`). Com o número removido da agenda, o serviço de triagem é invocado normalmente e o bloqueio funciona.
+
+**Implicação:** o app funciona corretamente para números desconhecidos (não guardados nos contactos). Chamadas de contactos guardados passam sempre, independentemente da blacklist ou da janela de tempo.
+
+**Workaround possível:** não existe solução via `CallScreeningService` — é um bypass do próprio MIUI. A restrição de bateria do MIUI também pode impedir o binding do serviço — definir o app como "Sem restrições" em Configurações → Aplicativos → Call Guard → Bateria.
