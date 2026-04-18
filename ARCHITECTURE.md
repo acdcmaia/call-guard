@@ -109,7 +109,7 @@ Agrega duas fontes para o histórico:
 1. **Log do sistema** (`CallLog.Calls`) — todas as chamadas registadas pelo Android
 2. **Room** (`recent_calls`) — chamadas processadas pelo app
 
-Entradas do Room sem correspondência no log do sistema (chamadas bloqueadas ainda não registadas pelo Android) aparecem imediatamente como `appOnly = true`, garantindo atualização em tempo real.
+Entradas do Room sem correspondência no log do sistema (chamadas bloqueadas ainda não registradas pelo Android) aparecem imediatamente como `appOnly = true`, garantindo atualização em tempo real.
 
 ---
 
