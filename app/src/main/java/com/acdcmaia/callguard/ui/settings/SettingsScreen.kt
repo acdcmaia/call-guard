@@ -16,13 +16,19 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.PopupPositionProvider
+import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.acdcmaia.callguard.BuildConfig
+import com.acdcmaia.callguard.CallGuardApp
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsScreen(vm: SettingsViewModel = viewModel()) {
+fun SettingsScreen() {
+    val context = LocalContext.current
+    val vm: SettingsViewModel = viewModel(
+        factory = SettingsViewModel.factory(context.applicationContext as CallGuardApp)
+    )
     val windowSeconds by vm.windowSeconds.collectAsState(initial = 300)
     var secondsInput by remember(windowSeconds) { mutableStateOf(windowSeconds.toString()) }
     var showAbout by remember { mutableStateOf(false) }

@@ -13,28 +13,28 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.lifecycleScope
-import com.acdcmaia.callguard.service.CallGuardForegroundService
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.acdcmaia.callguard.ui.CallGuardNavigation
 import com.acdcmaia.callguard.ui.theme.CallGuardTheme
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 class MainActivity : ComponentActivity() {
 
+    private lateinit var vm: MainViewModel
+
     private val roleRequest = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
-    ) { checkRole() }
-
-    private var hasRole by mutableStateOf(false)
+    ) { vm.checkRole() }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        checkRole()
+        val app = application as CallGuardApp
+        vm = ViewModelProvider(this, MainViewModel.factory(app))[MainViewModel::class.java]
+        vm.checkRole()
         setContent {
             CallGuardTheme {
+                val hasRole by vm.hasRole.collectAsStateWithLifecycle()
                 if (hasRole) {
                     CallGuardNavigation()
                 } else {
@@ -63,28 +63,13 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
-        checkRole()
+        vm.checkRole()
     }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         if (intent.action == "android.telecom.action.POST_CALL") {
-            checkRole()
-        }
-    }
-
-    private fun checkRole() {
-        lifecycleScope.launch(Dispatchers.IO) {
-            val rm = getSystemService(RoleManager::class.java)
-            val roleHeld = rm.isRoleHeld(RoleManager.ROLE_CALL_SCREENING)
-            withContext(Dispatchers.Main) {
-                hasRole = roleHeld
-                if (roleHeld) {
-                    CallGuardForegroundService.start(this@MainActivity)
-                } else {
-                    CallGuardForegroundService.stop(this@MainActivity)
-                }
-            }
+            vm.checkRole()
         }
     }
 
