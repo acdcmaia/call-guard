@@ -29,8 +29,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        val app = application as CallGuardApp
-        vm = ViewModelProvider(this, MainViewModel.factory(app))[MainViewModel::class.java]
+        vm = ViewModelProvider(this, MainViewModel.factory(callGuardApp))[MainViewModel::class.java]
         vm.checkRole()
         setContent {
             CallGuardTheme {
