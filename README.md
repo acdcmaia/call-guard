@@ -8,7 +8,7 @@ Call Guard é um aplicativo Android de triagem de chamadas. O princípio é simp
 flowchart LR
     A([Chamada recebida]) --> B{Na lista negra?}
     B -- Sim --> C([Bloqueada])
-    B -- Não --> D{Ligou antes\nnos últimos t segundos?}
+    B -- Não --> D{Ligou antes\nnos últimos X segundos?}
     D -- Não --> C
     D -- Sim --> E([Permitida])
 ```
@@ -39,7 +39,7 @@ Em **Lista Negra**, adicione sequências de dígitos. Qualquer chamada cujo núm
 > Ex.: a sequência `91234` bloqueia chamadas de `021XXXXXXXXX`
 
 ### Histórico
-Em **Chamadas**, constam os registos de todas as chamadas processadas. Chamadas bloqueadas aparecem a vermelho.
+Em **Chamadas**, constam os registros de todas as chamadas processadas. Chamadas bloqueadas aparecem em vermelho.
 
 ## Compilação do projeto
 
