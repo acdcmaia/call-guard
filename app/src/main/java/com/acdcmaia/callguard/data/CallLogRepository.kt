@@ -60,7 +60,7 @@ class CallLogRepository(private val context: Context, private val db: AppDatabas
         (systemItems + roomOnlyItems).sortedByDescending { it.timestamp }
     }
 
-    private fun readSystemCallLog(limit: Int = 200): List<SystemCall> {
+    private fun readSystemCallLog(limit: Int = 100): List<SystemCall> {
         val calls = mutableListOf<SystemCall>()
         val cursor = context.contentResolver.query(
             CallLog.Calls.CONTENT_URI,

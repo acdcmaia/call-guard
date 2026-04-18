@@ -20,7 +20,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.acdcmaia.callguard.CallGuardApp
+import com.acdcmaia.callguard.callGuardApp
 import com.acdcmaia.callguard.data.CallHistoryItem
 import com.acdcmaia.callguard.data.db.BlockReason
 import java.text.SimpleDateFormat
@@ -31,13 +31,21 @@ import java.util.*
 fun RecentCallsScreen() {
     val context = LocalContext.current
     val vm: RecentCallsViewModel = viewModel(
-        factory = RecentCallsViewModel.factory(context.applicationContext as CallGuardApp)
+        factory = RecentCallsViewModel.factory(context.callGuardApp)
     )
     val calls by vm.calls.collectAsState()
+    var permissionsDenied by remember { mutableStateOf(false) }
 
     val multiplePermissionsLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
-    ) { results -> if (results.values.all { it }) vm.loadHistory() }
+    ) { results ->
+        if (results.values.all { it }) {
+            permissionsDenied = false
+            vm.loadHistory()
+        } else {
+            permissionsDenied = true
+        }
+    }
 
     val lifecycleOwner = LocalLifecycleOwner.current
     LaunchedEffect(lifecycleOwner) {
@@ -50,6 +58,7 @@ fun RecentCallsScreen() {
             ) == PackageManager.PERMISSION_GRANTED
 
             if (callLogGranted && contactsGranted) {
+                permissionsDenied = false
                 vm.loadHistory()
             } else {
                 val toRequest = buildList {
@@ -63,7 +72,14 @@ fun RecentCallsScreen() {
 
     Column(modifier = Modifier.fillMaxSize()) {
         TopAppBar(title = { Text("Chamadas") })
-        if (calls.isEmpty()) {
+        if (permissionsDenied) {
+            Box(modifier = Modifier.fillMaxSize().padding(24.dp), contentAlignment = Alignment.Center) {
+                Text(
+                    "Permissões necessárias não foram concedidas. Acesse Configurações do dispositivo → Aplicativos → Call Guard → Permissões para habilitar o acesso ao histórico de chamadas e contatos.",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
+        } else if (calls.isEmpty()) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Text("Nenhuma chamada encontrada")
             }

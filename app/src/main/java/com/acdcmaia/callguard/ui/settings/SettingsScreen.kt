@@ -19,7 +19,7 @@ import androidx.compose.ui.window.PopupPositionProvider
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.acdcmaia.callguard.BuildConfig
-import com.acdcmaia.callguard.CallGuardApp
+import com.acdcmaia.callguard.callGuardApp
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -27,9 +27,9 @@ import kotlinx.coroutines.launch
 fun SettingsScreen() {
     val context = LocalContext.current
     val vm: SettingsViewModel = viewModel(
-        factory = SettingsViewModel.factory(context.applicationContext as CallGuardApp)
+        factory = SettingsViewModel.factory(context.callGuardApp)
     )
-    val windowSeconds by vm.windowSeconds.collectAsState(initial = 300)
+    val windowSeconds by vm.windowSeconds.collectAsState(initial = 120)
     var secondsInput by remember(windowSeconds) { mutableStateOf(windowSeconds.toString()) }
     var showAbout by remember { mutableStateOf(false) }
     val tooltipState = rememberTooltipState(isPersistent = true)
@@ -77,8 +77,8 @@ fun SettingsScreen() {
                     onValueChange = { v ->
                         val filtered = v.filter { it.isDigit() }
                         secondsInput = filtered
-                        val secs = (filtered.toIntOrNull() ?: 0).coerceIn(0, 86400)
-                        if (secs > 0) vm.setWindowSeconds(secs)
+                        val secs = (filtered.toIntOrNull() ?: 1).coerceIn(1, 86400)
+                        vm.setWindowSeconds(secs)
                     },
                     label = { Text("Segundos") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),

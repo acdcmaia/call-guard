@@ -35,7 +35,7 @@ class ContactsRepository(private val context: Context) {
         }
     }
 
-    private fun loadCache(): Set<String> {
+    private suspend fun loadCache(): Set<String> = withContext(Dispatchers.IO) {
         val uri = ContactsContract.CommonDataKinds.Phone.CONTENT_URI
         val projection = arrayOf(ContactsContract.CommonDataKinds.Phone.NUMBER)
         val result = mutableSetOf<String>()
@@ -48,7 +48,7 @@ class ContactsRepository(private val context: Context) {
             }
         }
         cache = result
-        return result
+        result
     }
 
     companion object {
