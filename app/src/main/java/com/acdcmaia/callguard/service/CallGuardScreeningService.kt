@@ -82,7 +82,8 @@ class CallGuardScreeningService : CallScreeningService() {
                 number = number,
                 timestamp = System.currentTimeMillis(),
                 allowed = false,
-                blockReason = BlockReason.BLACKLIST
+                blockReason = BlockReason.BLACKLIST,
+                matchedPattern = matchedPattern.pattern
             ))
             respondToCall(callDetails, CallResponse.Builder()
                 .setDisallowCall(true)

@@ -12,26 +12,26 @@ class CallLogRepository(private val context: Context, private val db: AppDatabas
 
     suspend fun getMergedHistory(): List<CallHistoryItem> = withContext(Dispatchers.IO) {
         val systemCalls = readSystemCallLog()
-        val patterns = db.blacklistDao().getAllOnce()
         val roomCalls = db.recentCallDao().getAllOnce()
+        val patternLabels = db.blacklistDao().getAllOnce().associate { it.pattern to it.label }
 
         val matchedRoomIds = mutableSetOf<Long>()
 
         val systemItems = systemCalls.map { call ->
-            val digits = call.number.filter { it.isDigit() }
-            val matchedPattern = patterns.firstOrNull { p -> digits.contains(p.pattern) }
             val appCall = roomCalls.firstOrNull { a ->
                 a.number == call.number && abs(a.timestamp - call.timestamp) < 60_000L
             }
             if (appCall != null) matchedRoomIds.add(appCall.id)
+            val label = appCall?.matchedPattern?.let { p ->
+                patternLabels[p]?.takeIf { it.isNotBlank() } ?: p
+            }
             CallHistoryItem(
                 number = call.number,
                 timestamp = call.timestamp,
                 callType = call.type,
-                isBlacklisted = matchedPattern != null,
-                matchedPattern = matchedPattern?.pattern,
-                matchedPatternLabel = matchedPattern?.label?.takeIf { it.isNotBlank() }
-                    ?: matchedPattern?.pattern,
+                isBlacklisted = appCall?.blockReason == BlockReason.BLACKLIST,
+                matchedPattern = appCall?.matchedPattern,
+                matchedPatternLabel = label,
                 interceptedByApp = appCall != null,
                 blockReason = appCall?.blockReason,
                 appOnly = false
@@ -41,16 +41,16 @@ class CallLogRepository(private val context: Context, private val db: AppDatabas
         val roomOnlyItems = roomCalls
             .filter { it.id !in matchedRoomIds }
             .map { appCall ->
-                val digits = appCall.number.filter { it.isDigit() }
-                val matchedPattern = patterns.firstOrNull { p -> digits.contains(p.pattern) }
+                val label = appCall.matchedPattern?.let { p ->
+                    patternLabels[p]?.takeIf { it.isNotBlank() } ?: p
+                }
                 CallHistoryItem(
                     number = appCall.number,
                     timestamp = appCall.timestamp,
                     callType = -1,
-                    isBlacklisted = matchedPattern != null,
-                    matchedPattern = matchedPattern?.pattern,
-                    matchedPatternLabel = matchedPattern?.label?.takeIf { it.isNotBlank() }
-                        ?: matchedPattern?.pattern,
+                    isBlacklisted = appCall.blockReason == BlockReason.BLACKLIST,
+                    matchedPattern = appCall.matchedPattern,
+                    matchedPatternLabel = label,
                     interceptedByApp = true,
                     blockReason = appCall.blockReason,
                     appOnly = true

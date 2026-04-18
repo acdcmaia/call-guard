@@ -11,5 +11,6 @@ data class RecentCall(
     val number: String,
     val timestamp: Long,
     val allowed: Boolean,
-    val blockReason: BlockReason? = null
+    val blockReason: BlockReason? = null,
+    val matchedPattern: String? = null
 )
