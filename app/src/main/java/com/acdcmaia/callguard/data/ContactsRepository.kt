@@ -16,6 +16,8 @@ class ContactsRepository(private val context: Context) {
     private val cacheMutex = Mutex()
 
     init {
+        // Observer vive enquanto o processo viver — intencional, pois ContactsRepository
+        // é singleton em CallGuardApp e deve acompanhar o ciclo de vida do processo.
         context.contentResolver.registerContentObserver(
             ContactsContract.Contacts.CONTENT_URI,
             true,
