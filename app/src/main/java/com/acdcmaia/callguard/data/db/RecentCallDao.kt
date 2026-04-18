@@ -19,4 +19,10 @@ interface RecentCallDao {
 
     @Query("DELETE FROM recent_calls WHERE timestamp < :before")
     suspend fun deleteOlderThan(before: Long)
+
+    @Query("SELECT COUNT(*) FROM recent_calls WHERE blockReason IS NOT NULL")
+    fun countBlockedFlow(): Flow<Int>
+
+    @Query("SELECT COUNT(*) FROM recent_calls WHERE blockReason IS NOT NULL")
+    suspend fun countBlockedOnce(): Int
 }

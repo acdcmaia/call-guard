@@ -4,6 +4,7 @@ import com.acdcmaia.callguard.data.db.BlockReason
 
 data class CallHistoryItem(
     val number: String,
+    val contactName: String?,
     val timestamp: Long,
     val callType: Int,
     val isBlacklisted: Boolean,

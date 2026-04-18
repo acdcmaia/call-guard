@@ -104,7 +104,7 @@ private fun CallHistoryRow(item: CallHistoryItem) {
         CallLog.Calls.INCOMING_TYPE -> "Recebida"
         CallLog.Calls.OUTGOING_TYPE -> "Efetuada"
         CallLog.Calls.MISSED_TYPE -> "Perdida"
-        else -> "Chamada"
+        else -> "Recebida"
     }
 
     val statusLabel = when (item.blockReason) {
@@ -118,7 +118,18 @@ private fun CallHistoryRow(item: CallHistoryItem) {
 
     ListItem(
         headlineContent = {
-            Text(item.number, color = textColor)
+            if (item.contactName != null) {
+                Column {
+                    Text(item.contactName, color = textColor)
+                    Text(
+                        item.number,
+                        color = textColor,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+            } else {
+                Text(item.number, color = textColor)
+            }
         },
         supportingContent = {
             Text(

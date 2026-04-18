@@ -8,7 +8,11 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlin.math.abs
 
-class CallLogRepository(private val context: Context, private val db: AppDatabase) {
+class CallLogRepository(
+    private val context: Context,
+    private val db: AppDatabase,
+    private val contactsRepository: ContactsRepository
+) {
 
     suspend fun getMergedHistory(): List<CallHistoryItem> = withContext(Dispatchers.IO) {
         val systemCalls = readSystemCallLog()
@@ -17,26 +21,29 @@ class CallLogRepository(private val context: Context, private val db: AppDatabas
 
         val matchedRoomIds = mutableSetOf<Long>()
 
-        val systemItems = systemCalls.map { call ->
-            val appCall = roomCalls.firstOrNull { a ->
-                a.number == call.number && abs(a.timestamp - call.timestamp) < 60_000L
+        val systemItems = systemCalls
+            .filter { it.type != CallLog.Calls.OUTGOING_TYPE }
+            .map { call ->
+                val appCall = roomCalls.firstOrNull { a ->
+                    a.number == call.number && abs(a.timestamp - call.timestamp) < 60_000L
+                }
+                if (appCall != null) matchedRoomIds.add(appCall.id)
+                val label = appCall?.matchedPattern?.let { p ->
+                    patternLabels[p]?.takeIf { it.isNotBlank() } ?: p
+                }
+                CallHistoryItem(
+                    number = call.number,
+                    contactName = contactsRepository.getContactName(call.number),
+                    timestamp = call.timestamp,
+                    callType = call.type,
+                    isBlacklisted = appCall?.blockReason == BlockReason.BLACKLIST,
+                    matchedPattern = appCall?.matchedPattern,
+                    matchedPatternLabel = label,
+                    interceptedByApp = appCall != null,
+                    blockReason = appCall?.blockReason,
+                    appOnly = false
+                )
             }
-            if (appCall != null) matchedRoomIds.add(appCall.id)
-            val label = appCall?.matchedPattern?.let { p ->
-                patternLabels[p]?.takeIf { it.isNotBlank() } ?: p
-            }
-            CallHistoryItem(
-                number = call.number,
-                timestamp = call.timestamp,
-                callType = call.type,
-                isBlacklisted = appCall?.blockReason == BlockReason.BLACKLIST,
-                matchedPattern = appCall?.matchedPattern,
-                matchedPatternLabel = label,
-                interceptedByApp = appCall != null,
-                blockReason = appCall?.blockReason,
-                appOnly = false
-            )
-        }
 
         val roomOnlyItems = roomCalls
             .filter { it.id !in matchedRoomIds }
@@ -46,6 +53,7 @@ class CallLogRepository(private val context: Context, private val db: AppDatabas
                 }
                 CallHistoryItem(
                     number = appCall.number,
+                    contactName = contactsRepository.getContactName(appCall.number),
                     timestamp = appCall.timestamp,
                     callType = -1,
                     isBlacklisted = appCall.blockReason == BlockReason.BLACKLIST,

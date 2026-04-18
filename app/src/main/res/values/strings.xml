@@ -2,4 +2,9 @@
     <string name="app_name">Call Guard</string>
     <string name="notification_channel_name">Call Guard ativo</string>
     <string name="notification_text">Proteção contra chamadas indesejadas ativa</string>
+    <string name="notification_active">Call Guard ativo</string>
+    <plurals name="notification_blocked">
+        <item quantity="one">%d chamada bloqueada</item>
+        <item quantity="other">%d chamadas bloqueadas</item>
+    </plurals>
 </resources>

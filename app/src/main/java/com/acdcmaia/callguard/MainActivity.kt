@@ -15,10 +15,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.lifecycleScope
 import com.acdcmaia.callguard.ui.CallGuardNavigation
 import com.acdcmaia.callguard.ui.theme.CallGuardTheme
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
+
+    companion object {
+        const val ACTION_MARK_SEEN = "com.acdcmaia.callguard.ACTION_MARK_SEEN"
+    }
+
 
     private lateinit var vm: MainViewModel
 
@@ -31,6 +38,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         vm = ViewModelProvider(this, MainViewModel.factory(callGuardApp))[MainViewModel::class.java]
         vm.checkRole()
+        handleIntent(intent)
         setContent {
             CallGuardTheme {
                 val hasRole by vm.hasRole.collectAsStateWithLifecycle()
@@ -67,8 +75,17 @@ class MainActivity : ComponentActivity() {
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
-        if (intent.action == "android.telecom.action.POST_CALL") {
-            vm.checkRole()
+        handleIntent(intent)
+    }
+
+    private fun handleIntent(intent: Intent?) {
+        if (intent?.action == ACTION_MARK_SEEN) markNotificationSeen()
+    }
+
+    private fun markNotificationSeen() {
+        lifecycleScope.launch {
+            val total = callGuardApp.database.recentCallDao().countBlockedOnce()
+            callGuardApp.settingsRepository.setSeenBlockedCount(total.toLong())
         }
     }
 
