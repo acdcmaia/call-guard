@@ -16,17 +16,17 @@ call-guard/
 │   ├── AndroidManifest.xml
 │   └── java/com/acdcmaia/callguard/
 │       ├── CallGuardApp.kt          # Application — inicializa repositórios
-│       ├── MainActivity.kt          # Entrada + gestão do role de triagem
+│       ├── MainActivity.kt          # Entrada + gestão do role de triagem + reset do contador de notificação
 │       ├── data/
 │       │   ├── db/                  # Room: entidades, DAOs, base de dados
 │       │   ├── CallRepository.kt    # Blacklist + chamadas recentes
-│       │   ├── CallLogRepository.kt # Histórico mesclado (Room + sistema)
-│       │   ├── SettingsRepository.kt# Preferências (DataStore)
-│       │   ├── ContactsRepository.kt# Verificação de contatos da agenda
+│       │   ├── CallLogRepository.kt # Histórico mesclado (Room + sistema), filtra efetuadas, resolve nomes
+│       │   ├── SettingsRepository.kt# Preferências (DataStore): janela de tempo + contador de bloqueadas vistas
+│       │   ├── ContactsRepository.kt# Verificação e resolução de nomes da agenda
 │       │   └── CallHistoryItem.kt   # Modelo de exibição do histórico
 │       ├── service/
 │       │   ├── CallGuardScreeningService.kt  # Triagem de chamadas
-│       │   ├── CallGuardForegroundService.kt # Serviço de notificação persistente
+│       │   ├── CallGuardForegroundService.kt # Notificação persistente dinâmica
 │       │   └── PhoneStateReceiver.kt         # Diagnóstico de estado de chamada
 │       └── ui/
 │           ├── Navigation.kt        # Bottom navigation (3 abas)
@@ -51,8 +51,8 @@ Classe `Application`. Inicializa e expõe como singletons:
 - Verifica se o app possui o `ROLE_CALL_SCREENING` do Android
 - Se não tiver, exibe tela pedindo permissão via `RoleManager`
 - Se tiver, inicia o `CallGuardForegroundService`
-- Recebe o intent `android.telecom.action.POST_CALL` (enviado pelo telecom após cada chamada) via `onNewIntent()`, que dispara nova verificação do role
-- Usa `launchMode="singleTop"` para evitar instâncias duplicadas ao receber o POST_CALL
+- Ao receber o intent `ACTION_MARK_SEEN` (disparado pelo toque na notificação), consulta o total atual de chamadas bloqueadas no Room e salva em `SettingsRepository.seenBlockedCount`, zerando o contador da notificação
+- Usa `launchMode="singleTop"` para receber `ACTION_MARK_SEEN` via `onNewIntent()` quando o app já está em primeiro plano
 
 ### `CallGuardScreeningService`
 Implementa `CallScreeningService` do Android. É vinculado pelo framework telecom a cada chamada recebida.
@@ -63,10 +63,24 @@ Implementa `CallScreeningService` do Android. É vinculado pelo framework teleco
 - Usa `setDisallowCall(true)` + `setRejectCall(true)` para bloquear: o chamador recebe sinal de ocupado imediatamente
 
 ### `ContactsRepository`
-Consulta `ContactsContract.CommonDataKinds.Phone` para verificar se um número pertence à agenda do dispositivo. A comparação usa os últimos 8 dígitos para tolerar diferenças de código de país e formatação.
+Consulta `ContactsContract.CommonDataKinds.Phone` para verificar se um número pertence à agenda e obter o nome do contato. O cache é um `Map<String, String>` (dígitos → nome de exibição), invalidado via `ContentObserver` quando os contatos do dispositivo mudam. A comparação usa os últimos 8 dígitos para tolerar diferenças de código de país e formatação.
+
+Métodos públicos:
+- `isContact(number)` — verifica se o número está na agenda
+- `getContactName(number)` — retorna o nome do contato, ou `null` se não encontrado
 
 ### `CallGuardForegroundService`
 Serviço de notificação persistente (`foregroundServiceType="dataSync"`). Mantém o processo do app vivo para garantir que o `CallGuardScreeningService` seja vinculado pelo telecom sem ser morto pelo sistema.
+
+Observa em tempo real a combinação de dois flows:
+1. `RecentCallDao.countBlockedFlow()` — total acumulado de chamadas bloqueadas no Room
+2. `SettingsRepository.seenBlockedCount` — total visto na última vez que a notificação foi tocada
+
+O delta entre os dois valores determina o estado da notificação:
+- **Delta = 0:** fundo verde, ícone de escudo simples, texto "Call Guard ativo"
+- **Delta > 0:** fundo vermelho, ícone de escudo com !, texto "N chamada(s) bloqueada(s)"
+
+A notificação atualiza automaticamente a cada nova chamada bloqueada, sem necessidade de reiniciar o app.
 
 ### `PhoneStateReceiver`
 Receiver de `android.intent.action.PHONE_STATE`. Adicionado como ferramenta de diagnóstico para confirmar se chamadas chegam ao processo do app, independentemente do `CallScreeningService`.
@@ -80,7 +94,7 @@ Receiver de `android.intent.action.PHONE_STATE`. Adicionado como ferramenta de d
 | Tabela | Entidade | Descrição |
 |---|---|---|
 | `blacklist_patterns` | `BlacklistPattern` | Sequências de dígitos a bloquear |
-| `recent_calls` | `RecentCall` | Registo de cada chamada processada pelo app |
+| `recent_calls` | `RecentCall` | Registro de cada chamada processada pelo app |
 
 **`BlacklistPattern`**
 ```
@@ -102,14 +116,27 @@ blockReason: BlockReason?  — BLACKLIST | FIRST_CALL | null (se permitida)
 
 | Chave | Tipo | Default | Descrição |
 |---|---|---|---|
-| `window_seconds` | Int | 300 | Janela de tempo em segundos (anterior: `window_minutes` — migrado) |
+| `window_seconds` | Int | 120 | Janela de tempo em segundos |
+| `seen_blocked_count` | Long | -1 | Total de bloqueadas na última vez que a notificação foi tocada; -1 = primeiro uso |
 
 ### `CallLogRepository`
 Agrega duas fontes para o histórico:
-1. **Log do sistema** (`CallLog.Calls`) — todas as chamadas registadas pelo Android
+1. **Log do sistema** (`CallLog.Calls`) — chamadas registradas pelo Android, excluindo as efetuadas (`OUTGOING_TYPE`)
 2. **Room** (`recent_calls`) — chamadas processadas pelo app
 
-Entradas do Room sem correspondência no log do sistema (chamadas bloqueadas ainda não registradas pelo Android) aparecem imediatamente como `appOnly = true`, garantindo atualização em tempo real.
+Para cada entrada, resolve o nome do contato via `ContactsRepository.getContactName()`. Entradas do Room sem correspondência no log do sistema (chamadas bloqueadas ainda não registradas pelo Android) aparecem imediatamente como `appOnly = true`, garantindo atualização em tempo real.
+
+### `CallHistoryItem`
+Modelo de exibição do histórico. Campos relevantes:
+
+| Campo | Tipo | Descrição |
+|---|---|---|
+| `number` | String | Número do chamador |
+| `contactName` | String? | Nome do contato na agenda, ou null |
+| `timestamp` | Long | Momento da chamada |
+| `callType` | Int | Tipo conforme `CallLog.Calls` (-1 para `appOnly`) |
+| `blockReason` | BlockReason? | Motivo do bloqueio, ou null se permitida |
+| `appOnly` | Boolean | True para bloqueadas ainda não no log do sistema |
 
 ---
 
@@ -145,9 +172,26 @@ flowchart LR
     C --> D[getMergedHistory:\nRoom + log do sistema]
     D --> E[UI atualiza\nem tempo real]
 
-    F[Chamada termina] --> G[Android regista\nno CallLog do sistema]
+    F[Chamada termina] --> G[Android registra\nno CallLog do sistema]
     G --> H[repeatOnLifecycle RESUMED\ntrigger no próximo foco]
     H --> D
+```
+
+---
+
+## Fluxo da notificação dinâmica
+
+```mermaid
+flowchart LR
+    A[RecentCall inserido no Room] --> B[countBlockedFlow emite\nnovo total]
+    B --> C[CallGuardForegroundService\ncalcula delta]
+    C --> D{delta > 0?}
+    D -- Sim --> E[Notificação vermelha\nN chamadas bloqueadas]
+    D -- Não --> F[Notificação verde\nCall Guard ativo]
+
+    G[Usuário toca notificação] --> H[MainActivity.ACTION_MARK_SEEN]
+    H --> I[seenBlockedCount = total atual]
+    I --> C
 ```
 
 ---
@@ -171,10 +215,10 @@ Wildcards não são suportados. O campo da lista negra aceita apenas dígitos.
 
 Bottom navigation com 3 abas:
 
-| Rota | Ecrã | Descrição |
+| Rota | Tela | Descrição |
 |---|---|---|
-| `calls` | `RecentCallsScreen` | Histórico de chamadas (start destination); chamadas bloqueadas em vermelho |
-| `blacklist` | `BlacklistScreen` | Gerir sequências bloqueadas; suporta adicionar, editar e remover |
+| `calls` | `RecentCallsScreen` | Histórico de chamadas recebidas e bloqueadas (chamadas efetuadas não são exibidas); nome do contato exibido quando disponível; bloqueadas em vermelho |
+| `blacklist` | `BlacklistScreen` | Gerenciar sequências bloqueadas; suporta adicionar, editar e remover |
 | `settings` | `SettingsScreen` | Janela de tempo em segundos; build info no ícone ⓘ |
 
 ---
@@ -185,7 +229,7 @@ Bottom navigation com 3 abas:
 |---|---|
 | `ROLE_CALL_SCREENING` | Obrigatório para o `CallScreeningService` ser vinculado pelo telecom |
 | `READ_PHONE_STATE` | Receber broadcast de estado de chamada (`PhoneStateReceiver`) |
-| `READ_CONTACTS` | Verificar se o número chamador está na agenda do dispositivo |
+| `READ_CONTACTS` | Verificar se o número chamador está na agenda e resolver nomes |
 | `READ_CALL_LOG` | Ler o log de chamadas do sistema para o histórico |
 | `FOREGROUND_SERVICE` / `FOREGROUND_SERVICE_DATA_SYNC` | Manter o serviço persistente ativo |
 | `POST_NOTIFICATIONS` | Notificação do `CallGuardForegroundService` |
@@ -209,13 +253,16 @@ Qualquer exceção não tratada durante a triagem resulta em `respondToCall` com
 Bloquear apenas com `setDisallowCall` silencia a chamada do lado do destinatário mas o chamador continua a ouvir toque. Adicionar `setRejectCall` envia sinal de ocupado imediatamente, encerrando a chamada no lado do chamador também.
 
 **Histórico com dupla fonte**
-O log do sistema só regista chamadas após o fim da ligação. Para mostrar chamadas bloqueadas imediatamente, o `CallLogRepository` inclui registros do Room sem correspondência no log do sistema (`appOnly = true`). Quando o log do sistema eventualmente regista a entrada, ela substitui a entrada `appOnly` no próximo refresh.
+O log do sistema só registra chamadas após o fim da ligação. Para mostrar chamadas bloqueadas imediatamente, o `CallLogRepository` inclui registros do Room sem correspondência no log do sistema (`appOnly = true`). Quando o log do sistema eventualmente registra a entrada, ela substitui a entrada `appOnly` no próximo refresh.
+
+**Contador de notificação por delta de contagem**
+O estado da notificação é determinado pela diferença entre o total acumulado de chamadas bloqueadas no Room e o valor `seenBlockedCount` salvo no DataStore. Isso evita consultas por intervalo de tempo e é naturalmente consistente após reinicializações do serviço. O valor `-1` em `seenBlockedCount` indica primeiro uso e é tratado como delta zero, evitando que chamadas históricas apareçam como "novas" na primeira execução.
 
 **`launchMode="singleTop"` na MainActivity**
-O telecom envia `POST_CALL` para a Activity após cada chamada. Sem `singleTop`, cada intent criaria uma nova instância da Activity. Com `singleTop`, o intent é entregue via `onNewIntent()` na instância existente.
+Usado para receber `ACTION_MARK_SEEN` via `onNewIntent()` quando o app já está em primeiro plano, sem criar instâncias duplicadas.
 
 **Tooltips com posicionamento abaixo do campo**
-O Material3 `TooltipDefaults` não expõe controlo de posição vertical. É usado um `PopupPositionProvider` customizado que posiciona o balão em `anchorBounds.bottom`, garantindo que não ultrapassa a largura da janela. Aplicado nos campos "Segundos" (Configurações) e "Sequência de dígitos" (Lista Negra).
+O Material3 `TooltipDefaults` não expõe controle de posição vertical. É usado um `PopupPositionProvider` customizado que posiciona o balão em `anchorBounds.bottom`, garantindo que não ultrapassa a largura da janela. Aplicado nos campos "Segundos" (Configurações) e "Sequência de dígitos" (Lista Negra).
 
 ---
 
@@ -226,6 +273,8 @@ Em dispositivos Xiaomi (MIUI) e Samsung, o framework telecom **ignora o `CallScr
 **Confirmação:** testado adicionando e removendo o mesmo número da agenda. Com o número na agenda, `onScreenCall` nunca é invocado (logcat do `system_server` mostra `[Allow, contact exists]`, zero logs `CallGuard`). Com o número removido da agenda, o serviço de triagem é invocado normalmente e o bloqueio funciona.
 
 **Comportamento do app:** o `CallGuardScreeningService` também verifica a agenda via `ContactsRepository` como primeira etapa da triagem. Em OEMs onde o bypass não existe, o app garante o mesmo comportamento: contatos são sempre permitidos. Em OEMs onde o bypass já existe (MIUI, Samsung), a verificação interna é redundante mas inofensiva.
+
+**Ícone na barra de status:** confirmado no MIUI que o `setSmallIcon()` é respeitado — o ícone muda de forma conforme o estado (escudo simples = ativo, escudo com ! = bloqueadas pendentes).
 
 **Implicação prática:** chamadas de contatos salvos na agenda nunca são bloqueadas, em qualquer dispositivo. A blacklist e a janela de tempo se aplicam apenas a números desconhecidos.
 

@@ -43,7 +43,15 @@ Em **Lista Negra**, adicione sequências de dígitos. Qualquer chamada cujo núm
 > Ex.: a sequência `91234` bloqueia chamadas de `021XXXXXXXXX`
 
 ### Histórico
-Em **Chamadas**, constam os registros de todas as chamadas processadas. Chamadas bloqueadas aparecem em vermelho.
+Em **Chamadas**, constam os registros de chamadas recebidas e bloqueadas (chamadas efetuadas não são exibidas). Para contatos salvos na agenda, o nome é exibido junto ao número. Chamadas bloqueadas aparecem em vermelho.
+
+### Notificação persistente
+O app mantém uma notificação ativa enquanto o serviço de triagem estiver em execução:
+
+- **Fundo verde / ícone de escudo:** nenhuma chamada bloqueada desde a última vez que a notificação foi tocada
+- **Fundo vermelho / ícone de escudo com !:** indica quantas chamadas foram bloqueadas desde a última vez que a notificação foi tocada
+
+Ao tocar na notificação, o contador é zerado e a notificação volta ao estado verde.
 
 ## Compilação do projeto
 
@@ -61,7 +69,7 @@ Em **Chamadas**, constam os registros de todas as chamadas processadas. Chamadas
 
 ## Limitações conhecidas
 
-**MIUI (Xiaomi) e Samsung:** o sistema ignora o serviço de triagem para números salvos nos contatos, aprovando-os automaticamente antes mesmo de consultar o app. O comportamento final é o mesmo, contatos sempre são permitidos.
+**MIUI (Xiaomi) e Samsung:** o sistema ignora o serviço de triagem para números salvos nos contatos, aprovando-os automaticamente antes mesmo de consultar o app. O comportamento final é o mesmo — contatos sempre são permitidos.
 
 **Restrição de bateria no MIUI:** pode impedir o funcionamento do serviço. Definir o app como "Sem restrições" em Configurações → Aplicativos → Call Guard → Bateria.
 

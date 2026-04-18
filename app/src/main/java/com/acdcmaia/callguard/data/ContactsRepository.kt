@@ -12,7 +12,7 @@ import kotlinx.coroutines.withContext
 
 class ContactsRepository(private val context: Context) {
 
-    @Volatile private var cache: Set<String>? = null
+    @Volatile private var cache: Map<String, String>? = null  // digits -> displayName
     private val cacheMutex = Mutex()
 
     init {
@@ -25,26 +25,40 @@ class ContactsRepository(private val context: Context) {
         )
     }
 
+    private suspend fun getCache(): Map<String, String> =
+        cache ?: cacheMutex.withLock { cache ?: loadCache() }
+
     suspend fun isContact(number: String): Boolean = withContext(Dispatchers.IO) {
         val digits = number.filter { it.isDigit() }
         if (digits.length < 4) return@withContext false
-
-        val contactDigits = cache ?: cacheMutex.withLock { cache ?: loadCache() }
-        contactDigits.any { cd ->
+        getCache().keys.any { cd ->
             digits.endsWith(cd.takeLast(8)) || cd.endsWith(digits.takeLast(8))
         }
     }
 
-    private suspend fun loadCache(): Set<String> = withContext(Dispatchers.IO) {
+    suspend fun getContactName(number: String): String? = withContext(Dispatchers.IO) {
+        val digits = number.filter { it.isDigit() }
+        if (digits.length < 4) return@withContext null
+        getCache().entries.firstOrNull { (cd, _) ->
+            digits.endsWith(cd.takeLast(8)) || cd.endsWith(digits.takeLast(8))
+        }?.value
+    }
+
+    private suspend fun loadCache(): Map<String, String> = withContext(Dispatchers.IO) {
         val uri = ContactsContract.CommonDataKinds.Phone.CONTENT_URI
-        val projection = arrayOf(ContactsContract.CommonDataKinds.Phone.NUMBER)
-        val result = mutableSetOf<String>()
+        val projection = arrayOf(
+            ContactsContract.CommonDataKinds.Phone.NUMBER,
+            ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME
+        )
+        val result = mutableMapOf<String, String>()
 
         context.contentResolver.query(uri, projection, null, null, null)?.use { cursor ->
-            val colIdx = cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER)
+            val numIdx = cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER)
+            val nameIdx = cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME)
             while (cursor.moveToNext()) {
-                val cd = cursor.getString(colIdx)?.filter { it.isDigit() } ?: continue
-                if (cd.length >= 4) result.add(cd)
+                val cd = cursor.getString(numIdx)?.filter { it.isDigit() } ?: continue
+                val name = cursor.getString(nameIdx) ?: continue
+                if (cd.length >= 4) result[cd] = name
             }
         }
         cache = result

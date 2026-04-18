@@ -15,7 +15,7 @@ val Context.callGuardApp: CallGuardApp
 class CallGuardApp : Application() {
     val database by lazy { AppDatabase.getInstance(this) }
     val callRepository by lazy { CallRepository(database) }
-    val callLogRepository by lazy { CallLogRepository(this, database) }
+    val callLogRepository by lazy { CallLogRepository(this, database, contactsRepository) }
     val settingsRepository by lazy { SettingsRepository(this) }
     val contactsRepository by lazy { ContactsRepository(this) }
 }
