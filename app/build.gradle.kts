@@ -48,20 +48,18 @@ android {
         compose = true
         buildConfig = true
     }
-
 }
 
-tasks.whenTaskAdded {
-    if (name.startsWith("assemble")) {
-        doLast {
-            val variant = name.removePrefix("assemble").lowercase()
-            val apkDir = layout.buildDirectory.dir("outputs/apk/$variant").get().asFile
-            apkDir.listFiles()
-                ?.filter { it.extension == "apk" }
-                ?.forEach { apk ->
-                    apk.renameTo(File(apk.parent, "CallGuard-${android.defaultConfig.versionName}-$buildDate.apk"))
-                }
-        }
+tasks.withType<com.android.build.gradle.tasks.PackageApplication>().configureEach {
+    doLast {
+        outputDirectory.get().asFile.listFiles()
+            ?.filter { it.name.startsWith("app-") && it.extension == "apk" }
+            ?.forEach { apk ->
+                apk.copyTo(
+                    File(apk.parent, "CallGuard-${android.defaultConfig.versionName}-$buildDate.apk"),
+                    overwrite = true
+                )
+            }
     }
 }
 
