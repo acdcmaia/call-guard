@@ -84,6 +84,8 @@ fun SettingsScreen() {
                     onValueChange = { v ->
                         val filtered = v.text.filter { it.isDigit() }
                         secondsInput = v.copy(text = filtered)
+                        val secs = filtered.toIntOrNull()
+                        if (secs != null && secs in 1..86400) vm.setWindowSeconds(secs)
                     },
                     label = { Text("Segundos") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
