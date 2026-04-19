@@ -221,7 +221,7 @@ Bottom navigation com 3 abas:
 
 | Rota | Tela | Descrição |
 |---|---|---|
-| `calls` | `RecentCallsScreen` | Histórico de chamadas recebidas e bloqueadas (efetuadas não exibidas); nome do contato exibido quando disponível; bloqueadas em vermelho |
+| `calls` | `RecentCallsScreen` | Histórico de chamadas liberadas e bloqueadas (efetuadas não exibidas); nome do contato exibido quando disponível; bloqueadas em vermelho |
 | `blacklist` | `BlacklistScreen` | Gerenciar sequências bloqueadas; suporta adicionar, editar e remover |
 | `settings` | `SettingsScreen` | Janela de tempo: exibe valor atual; toque abre dialog com campo e botões Cancelar/Salvar; build info no ícone ⓘ |
 
