@@ -126,7 +126,7 @@ blockReason: BlockReason?  — BLACKLIST | FIRST_CALL | null (se permitida)
 
 ### `CallLogRepository`
 Agrega duas fontes para o histórico:
-1. **Log do sistema** (`CallLog.Calls`) — chamadas registradas pelo Android, excluindo efetuadas (`OUTGOING_TYPE`) diretamente no `selection` do `ContentResolver.query()`, com `LIMIT` aplicado no SQL
+1. **Log do sistema** (`CallLog.Calls`) — chamadas registradas pelo Android, excluindo efetuadas (`OUTGOING_TYPE`) diretamente no `selection` do `ContentResolver.query()`; `LIMIT` aplicado via contador no cursor (não no sortOrder, pois MIUI rejeita SQL não padrão nesse parâmetro)
 2. **Room** (`recent_calls`) — chamadas processadas pelo app
 
 Para cada entrada, resolve o nome do contato via `ContactsRepository.getContactName()`. Entradas do Room sem correspondência no log do sistema (chamadas bloqueadas ainda não registradas pelo Android) aparecem imediatamente como `appOnly = true`, garantindo atualização em tempo real.
@@ -292,3 +292,26 @@ Em dispositivos Xiaomi (MIUI) e Samsung, o framework telecom **ignora o `CallScr
 **Implicação prática:** chamadas de contatos salvos na agenda nunca são bloqueadas, em qualquer dispositivo. A blacklist e a janela de tempo se aplicam apenas a números desconhecidos.
 
 **Restrição de bateria no MIUI:** pode impedir o binding do serviço para números desconhecidos — definir o app como "Sem restrições" em Configurações → Aplicativos → Call Guard → Bateria.
+
+---
+
+## Melhorias pendentes
+
+Itens identificados na análise de 2026-04-18. Nenhum implementado ainda.
+
+| # | Arquivo | Problema | Impacto |
+|---|---|---|---|
+| 1 | `MarkSeenReceiver` | `startActivity` é chamado antes de `seenBlockedCount` ser persistido (race condition: a notificação pode reaparecer) | Baixo |
+| 2 | `MarkSeenReceiver` | `CoroutineScope(Dispatchers.IO)` sem `SupervisorJob` — exceção cancela o scope inteiro | Baixo |
+| 3 | `RecentCallsViewModel` | Exceção não capturada em `getMergedHistory()` cancela o `StateFlow` permanentemente (histórico some da UI) | Alto |
+| 4 | `BlacklistViewModel.addPattern` | Usa `isBlank()` como validação em vez de `isValidPattern()` (dígitos apenas); aceita padrões inválidos | Médio |
+| 5 | `CallGuardScreeningService` | `screenMutex` serializa todas as chamadas simultâneas; timeout do framework pode ser atingido se duas chamadas chegarem ao mesmo tempo | Médio |
+| 6 | `CallGuardApp` | `database` é `val` público — código fora dos repositórios pode acessar o DAO diretamente, bypassando a camada de repositório | Baixo |
+| 7 | `BlacklistScreen` / `SettingsScreen` | `collectAsState()` sem `lifecycle-awareness` — pode coletar em background mesmo quando a UI está parada | Baixo |
+| 8 | `BlacklistScreen` / `SettingsScreen` | `PopupPositionProvider` duplicado nos dois arquivos | Cosmético |
+| 9 | múltiplos arquivos UI | `@OptIn(ExperimentalMaterial3Api::class)` repetido em vários arquivos | Cosmético |
+| 10 | 4 ViewModels | `ViewModelProvider.Factory` anônimo duplicado em cada ViewModel | Cosmético |
+| 11 | `ContactsRepository.loadCache()` | Sem limite de registros; em dispositivos com milhares de contatos pode causar pico de memória | Médio |
+| 12 | `RecentCall` | Campo `allowed: Boolean` é redundante com `blockReason == null`; requer migração de banco para remover | Baixo |
+| 13 | `CallLogRepository.readSystemCallLog` | Sem `try/catch` para exceções do `ContentResolver`; em ROMs customizadas pode lançar `SecurityException` ou `IllegalArgumentException` | Médio |
+| 14 | `MarkSeenReceiver` | `PendingIntent` usa intent implícita com `setPackage` em vez de `ComponentName` explícito | Baixo |
