@@ -126,7 +126,7 @@ blockReason: BlockReason?  — BLACKLIST | FIRST_CALL | null (se permitida)
 
 ### `CallLogRepository`
 Agrega duas fontes para o histórico:
-1. **Log do sistema** (`CallLog.Calls`) — chamadas registradas pelo Android, excluindo efetuadas (`OUTGOING_TYPE`) diretamente no `selection` do `ContentResolver.query()`, com `LIMIT` aplicado no SQL
+1. **Log do sistema** (`CallLog.Calls`) — chamadas registradas pelo Android, excluindo efetuadas (`OUTGOING_TYPE`) diretamente no `selection` do `ContentResolver.query()`; `LIMIT` aplicado via contador no cursor (não no sortOrder, pois MIUI rejeita SQL não padrão nesse parâmetro)
 2. **Room** (`recent_calls`) — chamadas processadas pelo app
 
 Para cada entrada, resolve o nome do contato via `ContactsRepository.getContactName()`. Entradas do Room sem correspondência no log do sistema (chamadas bloqueadas ainda não registradas pelo Android) aparecem imediatamente como `appOnly = true`, garantindo atualização em tempo real.
@@ -292,3 +292,10 @@ Em dispositivos Xiaomi (MIUI) e Samsung, o framework telecom **ignora o `CallScr
 **Implicação prática:** chamadas de contatos salvos na agenda nunca são bloqueadas, em qualquer dispositivo. A blacklist e a janela de tempo se aplicam apenas a números desconhecidos.
 
 **Restrição de bateria no MIUI:** pode impedir o binding do serviço para números desconhecidos — definir o app como "Sem restrições" em Configurações → Aplicativos → Call Guard → Bateria.
+
+---
+
+
+## Melhorias pendentes
+
+Rastreadas como issues no repositório: [github.com/acdcmaia/call-guard/issues](https://github.com/acdcmaia/call-guard/issues)
