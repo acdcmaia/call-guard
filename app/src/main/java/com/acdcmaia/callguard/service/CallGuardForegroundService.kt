@@ -38,6 +38,7 @@ class CallGuardForegroundService : Service() {
             this, 0,
             Intent(this, com.acdcmaia.callguard.MainActivity::class.java).apply {
                 flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                putExtra(com.acdcmaia.callguard.MainActivity.EXTRA_NAVIGATE_TO, "calls")
             },
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )

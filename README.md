@@ -44,7 +44,7 @@ Em **Lista Negra**, adicione sequências de dígitos. Qualquer chamada cujo núm
 > Ex.: a sequência `91234` bloqueia chamadas de `021XXXXXXXXX`
 
 ### Histórico
-Em **Chamadas**, constam os registros de chamadas recebidas e bloqueadas (chamadas efetuadas não são exibidas). Para contatos salvos na agenda, o nome é exibido junto ao número. Chamadas bloqueadas aparecem em vermelho.
+Em **Chamadas**, constam os registros de chamadas liberadas e bloqueadas (chamadas efetuadas não são exibidas). Para contatos salvos na agenda, o nome é exibido junto ao número. Chamadas bloqueadas aparecem em vermelho.
 
 ### Notificação persistente
 O app mantém uma notificação ativa enquanto o serviço de triagem estiver em execução:

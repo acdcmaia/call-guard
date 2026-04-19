@@ -106,10 +106,10 @@ private fun CallHistoryRow(item: CallHistoryItem) {
     ).format(dateFormatter)
 
     val typeLabel = when (item.callType) {
-        CallLog.Calls.INCOMING_TYPE -> "Recebida"
+        CallLog.Calls.INCOMING_TYPE -> "Liberada"
         CallLog.Calls.OUTGOING_TYPE -> "Efetuada"
         CallLog.Calls.MISSED_TYPE -> "Perdida"
-        else -> "Recebida"
+        else -> "Liberada"
     }
 
     val statusLabel = when (item.blockReason) {
