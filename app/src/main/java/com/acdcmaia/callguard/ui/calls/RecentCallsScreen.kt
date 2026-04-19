@@ -43,6 +43,7 @@ fun RecentCallsScreen() {
     ) { results ->
         if (results.values.all { it }) {
             permissionsDenied = false
+            context.callGuardApp.contactsRepository.registerPermission()
             vm.loadHistory()
         } else {
             permissionsDenied = true
