@@ -38,7 +38,7 @@ fun SettingsScreen() {
         )
         ListItem(
             headlineContent = { Text("Janela de tempo") },
-            supportingContent = { Text("$windowSeconds segundos") },
+            supportingContent = { Text(if (windowSeconds == 1) "1 segundo" else "$windowSeconds segundos") },
             modifier = Modifier.clickable { showDialog = true }
         )
         HorizontalDivider()
