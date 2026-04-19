@@ -273,8 +273,10 @@ O tipo `dataSync` tem janela de execução máxima de 6 horas no Android 14+ (AP
 **`SharingStarted.WhileSubscribed(5_000)` no ViewModel**
 O `StateFlow` de histórico cancela a coleta 5 segundos após a última UI sair do ciclo de vida ativo. Isso evita releituras do `CallLog` do sistema em background a cada inserção no Room.
 
-**Tooltips com posicionamento abaixo do campo**
-O Material3 `TooltipDefaults` não expõe controle de posição vertical. É usado um `PopupPositionProvider` customizado que posiciona o balão em `anchorBounds.bottom`, garantindo que não ultrapassa a largura da janela. Aplicado no campo "Sequência de dígitos" (Lista Negra).
+**Tooltips com `PopupPositionProvider` customizado**
+O Material3 `TooltipDefaults` não expõe controle de posição vertical. É usado um `PopupPositionProvider` customizado em dois contextos:
+- **Lista Negra** ("Sequência de dígitos"): posicionado abaixo do campo (`anchorBounds.bottom`)
+- **Configurações** (dialog "Janela de tempo"): posicionado acima do campo (`anchorBounds.top - popupContentSize.height`), exibido automaticamente ao focar o campo
 
 **`SettingsScreen` baseada em dialog**
 O campo de texto para janela de tempo foi substituído por um `ListItem` clicável que abre um `AlertDialog` com o campo e botões Cancelar/Salvar, idêntico ao padrão da Lista Negra. Elimina problemas de salvamento dependente de foco (o valor só é persistido ao confirmar o dialog).
@@ -299,21 +301,36 @@ Em dispositivos Xiaomi (MIUI) e Samsung, o framework telecom **ignora o `CallScr
 
 ## Melhorias pendentes
 
-Itens identificados na análise de 2026-04-18. Nenhum implementado ainda.
+Itens das análises de 2026-04-18 e 2026-04-19.
 
 | # | Arquivo | Problema | Impacto |
 |---|---|---|---|
 | ~~1~~ | ~~`MarkSeenReceiver`~~ | ~~race condition: `startActivity` antes de persistir `seenBlockedCount`~~ | **Resolvido** — lógica movida para `MainActivity.onResume()` |
 | ~~2~~ | ~~`MarkSeenReceiver`~~ | ~~`CoroutineScope` sem `SupervisorJob`~~ | **Resolvido** — `MarkSeenReceiver` sem uso ativo |
-| 3 | `RecentCallsViewModel` | Exceção não capturada em `getMergedHistory()` cancela o `StateFlow` permanentemente (histórico some da UI) | Alto |
-| 4 | `BlacklistViewModel.addPattern` | Usa `isBlank()` como validação em vez de `isValidPattern()` (dígitos apenas); aceita padrões inválidos | Médio |
+| ~~3~~ | ~~`RecentCallsViewModel`~~ | ~~Exceção não capturada em `getMergedHistory()` cancela o `StateFlow` permanentemente~~ | **Resolvido** — try/catch em `transformLatest` mantém último estado; `CancellationException` relançada para preservar structured concurrency |
+| ~~4~~ | ~~`BlacklistViewModel.addPattern`~~ | ~~Usa `isBlank()` em vez de `isValidPattern()`; aceita padrões inválidos~~ | **Resolvido** — usa `isValidPattern()` |
 | 5 | `CallGuardScreeningService` | `screenMutex` serializa todas as chamadas simultâneas; timeout do framework pode ser atingido se duas chamadas chegarem ao mesmo tempo | Médio |
 | 6 | `CallGuardApp` | `database` é `val` público — código fora dos repositórios pode acessar o DAO diretamente, bypassando a camada de repositório | Baixo |
 | 7 | `BlacklistScreen` | `collectAsState()` sem `lifecycle-awareness` — pode coletar em background mesmo quando a UI está parada | Baixo |
-| ~~8~~ | ~~`BlacklistScreen`~~ | ~~`PopupPositionProvider` duplicado~~ | **Resolvido** — `SettingsScreen` substituída por dialog, `PopupPositionProvider` existe apenas em `BlacklistScreen` |
+| ~~8~~ | ~~`BlacklistScreen`~~ | ~~`PopupPositionProvider` duplicado~~ | **Resolvido** — `SettingsScreen` substituída por dialog |
 | 9 | múltiplos arquivos UI | `@OptIn(ExperimentalMaterial3Api::class)` repetido em vários arquivos | Cosmético |
 | 10 | 4 ViewModels | `ViewModelProvider.Factory` anônimo duplicado em cada ViewModel | Cosmético |
-| 11 | `ContactsRepository.loadCache()` | Sem limite de registros; em dispositivos com milhares de contatos pode causar pico de memória | Médio |
+| ~~11~~ | ~~`ContactsRepository.loadCache()`~~ | ~~Sem limite de registros; pode causar pico de memória~~ | **Resolvido** — `QUERY_ARG_LIMIT = 5000` |
 | 12 | `RecentCall` | Campo `allowed: Boolean` é redundante com `blockReason == null`; requer migração de banco para remover | Baixo |
-| 13 | `CallLogRepository.readSystemCallLog` | Sem `try/catch` para exceções do `ContentResolver`; em ROMs customizadas pode lançar `SecurityException` ou `IllegalArgumentException` | Médio |
+| ~~13~~ | ~~`CallLogRepository.readSystemCallLog`~~ | ~~Sem `try/catch` para `SecurityException`/`IllegalArgumentException`~~ | **Resolvido** — try/catch adicionado; `CancellationException` relançada |
 | ~~14~~ | ~~`MarkSeenReceiver`~~ | ~~`PendingIntent` usa intent implícita com `setPackage`~~ | **Resolvido** — notificação usa `PendingIntent.getActivity` para `MainActivity` |
+| 15 | `ContactsRepository` | Race condition: `onChange` do `ContentObserver` anula o cache sem mutex, enquanto `getCache()` pode estar lendo concorrentemente | Alto |
+| 16 | `CallLogRepository` | Número `null` do cursor filtrado para string vazia (`?: ""`) pode gerar entradas inválidas no histórico | Médio |
+| 17 | `RecentCallDao` | `countBlockedFlow()` conta dentro das 100 mais recentes, mas após poda os IDs mudam — badge e histórico podem divergir | Médio |
+| 18 | `AndroidManifest` | `allowBackup="true"` expõe histórico de chamadas em backups ADB/Google Drive | Alto |
+| 19 | `CallGuardScreeningService` | Números de telefone completos impressos em logs — vazam dados em produção | Alto |
+| 20 | `MainActivity` | Sem validação de intent em `onNewIntent()` — vulnerável a intent spoofing por apps maliciosos | Médio |
+| 21 | `ContactsRepository` | `isContact()` e `getContactName()` duplicam a lógica de matching — extrair para método privado comum | Médio |
+| 22 | `CallLogRepository` | `getMergedHistory()` mistura merge, formatação e resolução de nomes na mesma função | Médio |
+| 23 | `SettingsRepository` | `edit()` do DataStore sem `try/catch` para `IOException` — corrupção do DataStore causa crash silencioso | Médio |
+| 24 | `CallGuardForegroundService` | `30L * 24 * 60 * 60 * 1_000` sem constante nomeada | Cosmético |
+| 25 | `CallGuardScreeningService` | Blacklist percorrida com busca linear a cada chamada — lento com muitos padrões | Médio |
+| 26 | `CallGuardScreeningService` | 3 queries ao banco a cada chamada, sem cache de blacklist entre chamadas | Médio |
+| ~~27~~ | ~~`CallGuardForegroundService`~~ | ~~`observeBlockedCount` sem `debounce` ou `distinctUntilChanged`~~ | **Resolvido** — `distinctUntilChanged()` + `debounce(500ms)` adicionados |
+| 28 | `RecentCallsScreen` | `DateTimeFormatter` (java.time) frágil se `minSdk` baixar abaixo de API 26 | Baixo |
+| 29 | `CallGuardScreeningService` | Sem fallback para ROMs que expõem o número em campo diferente de `handle?.schemeSpecificPart` | Médio |

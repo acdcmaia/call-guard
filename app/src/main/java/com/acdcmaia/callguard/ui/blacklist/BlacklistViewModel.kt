@@ -14,7 +14,7 @@ class BlacklistViewModel(private val repo: CallRepository) : ViewModel() {
     val patterns: Flow<List<BlacklistPattern>> = repo.blacklistPatterns
 
     fun addPattern(pattern: String, label: String) {
-        if (pattern.isBlank()) return
+        if (!isValidPattern(pattern)) return
         viewModelScope.launch {
             repo.addPattern(BlacklistPattern(pattern = pattern, label = label))
         }
