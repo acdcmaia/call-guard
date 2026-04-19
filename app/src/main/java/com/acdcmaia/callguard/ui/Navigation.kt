@@ -4,6 +4,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.padding
@@ -26,9 +27,23 @@ sealed class Screen(val route: String, val label: String) {
 }
 
 @Composable
-fun CallGuardNavigation() {
+fun CallGuardNavigation(
+    navigateTo: String? = null,
+    onNavigateConsumed: () -> Unit = {}
+) {
     val navController = rememberNavController()
     val items = listOf(Screen.Calls, Screen.Blacklist, Screen.Settings)
+
+    LaunchedEffect(navigateTo) {
+        if (navigateTo != null) {
+            navController.navigate(navigateTo) {
+                popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                launchSingleTop = true
+                restoreState = true
+            }
+            onNavigateConsumed()
+        }
+    }
 
     Scaffold(
         bottomBar = {
