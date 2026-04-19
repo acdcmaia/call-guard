@@ -29,10 +29,12 @@ class CallGuardForegroundService : Service() {
         get() = application as? CallGuardApp
             ?: throw IllegalStateException("Application deve ser CallGuardApp")
 
-    private val markSeenPendingIntent: PendingIntent by lazy {
-        PendingIntent.getBroadcast(
+    private val openAppPendingIntent: PendingIntent by lazy {
+        PendingIntent.getActivity(
             this, 0,
-            Intent(MarkSeenReceiver.ACTION).apply { setPackage(packageName) },
+            Intent(this, com.acdcmaia.callguard.MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            },
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
     }
@@ -79,7 +81,7 @@ class CallGuardForegroundService : Service() {
                 .setSmallIcon(R.drawable.ic_notification_blocked)
                 .setColor(Color.rgb(211, 47, 47))
                 .setColorized(true)
-                .setContentIntent(markSeenPendingIntent)
+                .setContentIntent(openAppPendingIntent)
                 .setOngoing(true)
                 .setSilent(true)
                 .build()
@@ -90,7 +92,7 @@ class CallGuardForegroundService : Service() {
                 .setSmallIcon(R.drawable.ic_notification)
                 .setColor(Color.rgb(56, 142, 60))
                 .setColorized(true)
-                .setContentIntent(markSeenPendingIntent)
+                .setContentIntent(openAppPendingIntent)
                 .setOngoing(true)
                 .setSilent(true)
                 .build()
