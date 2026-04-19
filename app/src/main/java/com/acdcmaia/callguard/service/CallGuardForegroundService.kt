@@ -58,7 +58,7 @@ class CallGuardForegroundService : Service() {
                 app.callRepository.countBlockedFlow(),
                 app.settingsRepository.seenBlockedCount
             ) { total, seen ->
-                if (seen < 0L) 0L else maxOf(0L, total - seen)
+                maxOf(0L, total - maxOf(0L, seen))
             }.collect { newCount ->
                 updateNotification(newCount)
             }
