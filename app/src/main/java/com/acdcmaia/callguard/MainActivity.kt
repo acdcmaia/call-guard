@@ -15,8 +15,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.lifecycleScope
 import com.acdcmaia.callguard.ui.CallGuardNavigation
 import com.acdcmaia.callguard.ui.theme.CallGuardTheme
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
 
@@ -63,6 +66,10 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         vm.checkRole()
+        lifecycleScope.launch(Dispatchers.IO) {
+            val total = callGuardApp.callRepository.countBlockedOnce()
+            callGuardApp.settingsRepository.setSeenBlockedCount(total)
+        }
     }
 
     private fun requestRole() {
