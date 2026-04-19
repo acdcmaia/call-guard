@@ -25,6 +25,7 @@ flowchart LR
 - Android 10 (API 29) ou superior
 - Permissão de triagem de chamadas (`ROLE_CALL_SCREENING`)
 - Permissão de leitura de contatos (`READ_CONTACTS`) — solicitada na primeira execução
+- Permissão de leitura do histórico de chamadas (`READ_CALL_LOG`) — solicitada na primeira visita à aba Chamadas
 
 ## Instalação
 
