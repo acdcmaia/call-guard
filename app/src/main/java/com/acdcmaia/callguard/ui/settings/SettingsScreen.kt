@@ -1,29 +1,20 @@
 package com.acdcmaia.callguard.ui.settings
 
-import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.text.TextRange
-import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.TextFieldValue
-import androidx.compose.ui.unit.IntOffset
-import androidx.compose.ui.unit.IntRect
-import androidx.compose.ui.unit.IntSize
-import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.PopupPositionProvider
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.acdcmaia.callguard.BuildConfig
 import com.acdcmaia.callguard.callGuardApp
 import com.acdcmaia.callguard.data.SettingsRepository
-import kotlinx.coroutines.launch
+
+private val STEPS = listOf(1, 5, 10, 30, 60, 120, 180, 300, 600, 1800, 3600)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -33,27 +24,16 @@ fun SettingsScreen() {
         factory = SettingsViewModel.factory(context.callGuardApp)
     )
     val windowSeconds by vm.windowSeconds.collectAsState(initial = SettingsRepository.DEFAULT_WINDOW_SECONDS)
-    var secondsInput by remember { mutableStateOf(TextFieldValue(windowSeconds.toString())) }
-    var fieldFocused by remember { mutableStateOf(false) }
-    LaunchedEffect(windowSeconds) {
-        if (!fieldFocused) secondsInput = TextFieldValue(windowSeconds.toString())
-    }
     var showAbout by remember { mutableStateOf(false) }
-    val tooltipState = rememberTooltipState(isPersistent = true)
-    val scope = rememberCoroutineScope()
-    val belowAnchor = remember {
-        object : PopupPositionProvider {
-            override fun calculatePosition(
-                anchorBounds: IntRect,
-                windowSize: IntSize,
-                layoutDirection: LayoutDirection,
-                popupContentSize: IntSize
-            ): IntOffset {
-                val x = maxOf(0, minOf(anchorBounds.left, windowSize.width - popupContentSize.width))
-                val y = anchorBounds.bottom
-                return IntOffset(x, y)
-            }
-        }
+
+    fun decrease() {
+        val next = STEPS.lastOrNull { it < windowSeconds } ?: STEPS.first()
+        vm.setWindowSeconds(next)
+    }
+
+    fun increase() {
+        val next = STEPS.firstOrNull { it > windowSeconds } ?: STEPS.last()
+        vm.setWindowSeconds(next)
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
@@ -69,46 +49,29 @@ fun SettingsScreen() {
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Text("Janela de tempo (segundos)", style = MaterialTheme.typography.bodyLarge)
-            TooltipBox(
-                positionProvider = belowAnchor,
-                tooltip = {
-                    RichTooltip {
-                        Text("Chamadas do mesmo número repetidas dentro desse período serão encaminhadas.")
-                    }
-                },
-                state = tooltipState
+            Text("Janela de tempo", style = MaterialTheme.typography.bodyLarge)
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                OutlinedTextField(
-                    value = secondsInput,
-                    onValueChange = { v ->
-                        val filtered = v.text.filter { it.isDigit() }
-                        secondsInput = v.copy(text = filtered)
-                        val secs = filtered.toIntOrNull()
-                        if (secs != null && secs in 1..86400) vm.setWindowSeconds(secs)
-                    },
-                    label = { Text("Segundos") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    singleLine = true,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .focusable()
-                        .onFocusChanged { focusState ->
-                            fieldFocused = focusState.isFocused
-                            if (focusState.isFocused) {
-                                secondsInput = secondsInput.copy(
-                                    selection = TextRange(0, secondsInput.text.length)
-                                )
-                                scope.launch { tooltipState.show() }
-                            } else {
-                                val secs = (secondsInput.text.toIntOrNull() ?: 1).coerceIn(1, 86400)
-                                secondsInput = TextFieldValue(secs.toString())
-                                vm.setWindowSeconds(secs)
-                            }
-                        }
+                FilledTonalIconButton(
+                    onClick = ::decrease,
+                    enabled = windowSeconds > STEPS.first()
+                ) {
+                    Text("−", style = MaterialTheme.typography.titleLarge)
+                }
+                Text(
+                    text = formatSeconds(windowSeconds),
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.widthIn(min = 80.dp),
                 )
+                FilledTonalIconButton(
+                    onClick = ::increase,
+                    enabled = windowSeconds < STEPS.last()
+                ) {
+                    Text("+", style = MaterialTheme.typography.titleLarge)
+                }
             }
-
         }
     }
 
@@ -129,4 +92,10 @@ fun SettingsScreen() {
             }
         )
     }
+}
+
+private fun formatSeconds(secs: Int): String = when {
+    secs < 60  -> "$secs s"
+    secs < 3600 -> "${secs / 60} min"
+    else        -> "${secs / 3600} h"
 }
