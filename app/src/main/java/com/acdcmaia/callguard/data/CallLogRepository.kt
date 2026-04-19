@@ -64,27 +64,33 @@ class CallLogRepository(
 
     private fun readSystemCallLog(limit: Int = 100): List<SystemCall> {
         val calls = mutableListOf<SystemCall>()
-        val cursor = context.contentResolver.query(
-            CallLog.Calls.CONTENT_URI,
-            arrayOf(CallLog.Calls.NUMBER, CallLog.Calls.DATE, CallLog.Calls.TYPE),
-            "${CallLog.Calls.TYPE} != ?",
-            arrayOf(CallLog.Calls.OUTGOING_TYPE.toString()),
-            "${CallLog.Calls.DATE} DESC"
-        ) ?: return calls
+        try {
+            val cursor = context.contentResolver.query(
+                CallLog.Calls.CONTENT_URI,
+                arrayOf(CallLog.Calls.NUMBER, CallLog.Calls.DATE, CallLog.Calls.TYPE),
+                "${CallLog.Calls.TYPE} != ?",
+                arrayOf(CallLog.Calls.OUTGOING_TYPE.toString()),
+                "${CallLog.Calls.DATE} DESC"
+            ) ?: return calls
 
-        cursor.use {
-            val numIdx = it.getColumnIndex(CallLog.Calls.NUMBER)
-            val dateIdx = it.getColumnIndex(CallLog.Calls.DATE)
-            val typeIdx = it.getColumnIndex(CallLog.Calls.TYPE)
-            var count = 0
-            while (it.moveToNext() && count < limit) {
-                calls.add(SystemCall(
-                    number = it.getString(numIdx) ?: "",
-                    timestamp = it.getLong(dateIdx),
-                    type = it.getInt(typeIdx)
-                ))
-                count++
+            cursor.use {
+                val numIdx = it.getColumnIndex(CallLog.Calls.NUMBER)
+                val dateIdx = it.getColumnIndex(CallLog.Calls.DATE)
+                val typeIdx = it.getColumnIndex(CallLog.Calls.TYPE)
+                var count = 0
+                while (it.moveToNext() && count < limit) {
+                    calls.add(SystemCall(
+                        number = it.getString(numIdx) ?: "",
+                        timestamp = it.getLong(dateIdx),
+                        type = it.getInt(typeIdx)
+                    ))
+                    count++
+                }
             }
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            // retorna o que foi coletado até o momento (pode ser lista vazia)
         }
         return calls
     }

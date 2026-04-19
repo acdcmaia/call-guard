@@ -1,6 +1,7 @@
 package com.acdcmaia.callguard.ui.settings
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -8,13 +9,20 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntRect
+import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.window.PopupPositionProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.acdcmaia.callguard.BuildConfig
 import com.acdcmaia.callguard.callGuardApp
 import com.acdcmaia.callguard.data.SettingsRepository
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -74,6 +82,7 @@ fun SettingsScreen() {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun WindowSecondsDialog(
     current: Int,
@@ -83,20 +92,49 @@ private fun WindowSecondsDialog(
     var input by remember { mutableStateOf(current.toString()) }
     val secs = input.toIntOrNull()
     val isValid = secs != null && secs in 1..86400
+    val tooltipState = rememberTooltipState(isPersistent = true)
+    val scope = rememberCoroutineScope()
+    val aboveAnchor = remember {
+        object : PopupPositionProvider {
+            override fun calculatePosition(
+                anchorBounds: IntRect,
+                windowSize: IntSize,
+                layoutDirection: LayoutDirection,
+                popupContentSize: IntSize
+            ): IntOffset {
+                val x = maxOf(0, minOf(anchorBounds.left, windowSize.width - popupContentSize.width))
+                val y = maxOf(0, anchorBounds.top - popupContentSize.height)
+                return IntOffset(x, y)
+            }
+        }
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Janela de tempo") },
         text = {
-            OutlinedTextField(
-                value = input,
-                onValueChange = { input = it.filter { c -> c.isDigit() } },
-                label = { Text("Segundos") },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                isError = !isValid && input.isNotEmpty(),
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth()
-            )
+            TooltipBox(
+                positionProvider = aboveAnchor,
+                tooltip = {
+                    RichTooltip {
+                        Text("Chamadas do mesmo número repetidas dentro deste período serão encaminhadas.")
+                    }
+                },
+                state = tooltipState
+            ) {
+                OutlinedTextField(
+                    value = input,
+                    onValueChange = { input = it.filter { c -> c.isDigit() } },
+                    label = { Text("Segundos") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    isError = !isValid && input.isNotEmpty(),
+                    singleLine = true,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .focusable()
+                        .onFocusChanged { if (it.isFocused) scope.launch { tooltipState.show() } }
+                )
+            }
         },
         confirmButton = {
             TextButton(onClick = { if (isValid) onConfirm(secs!!) }, enabled = isValid) {

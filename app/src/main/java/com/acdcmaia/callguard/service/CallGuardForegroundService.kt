@@ -16,10 +16,14 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
+@OptIn(FlowPreview::class)
 class CallGuardForegroundService : Service() {
 
     private val serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
@@ -61,9 +65,12 @@ class CallGuardForegroundService : Service() {
                 app.settingsRepository.seenBlockedCount
             ) { total, seen ->
                 maxOf(0L, total - maxOf(0L, seen))
-            }.collect { newCount ->
-                updateNotification(newCount)
             }
+                .distinctUntilChanged()
+                .debounce(500L)
+                .collect { newCount ->
+                    updateNotification(newCount)
+                }
         }
     }
 

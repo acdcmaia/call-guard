@@ -7,6 +7,7 @@ import com.acdcmaia.callguard.CallGuardApp
 import com.acdcmaia.callguard.data.CallHistoryItem
 import com.acdcmaia.callguard.data.CallLogRepository
 import com.acdcmaia.callguard.data.CallRepository
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -28,7 +29,13 @@ class RecentCallsViewModel(
         callRepo.recentCalls.map { },
         refreshTrigger
     ).transformLatest {
-        emit(callLogRepo.getMergedHistory())
+        try {
+            emit(callLogRepo.getMergedHistory())
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            // não emite — mantém o último estado conhecido no StateFlow
+        }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     fun loadHistory() {
