@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
 import android.database.ContentObserver
+import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.provider.ContactsContract
@@ -78,8 +79,11 @@ class ContactsRepository(private val context: Context) {
         )
         val result = mutableMapOf<String, String>()
 
+        val queryArgs = Bundle().apply {
+            putInt(android.content.ContentResolver.QUERY_ARG_LIMIT, 5_000)
+        }
         try {
-            context.contentResolver.query(uri, projection, null, null, null)?.use { cursor ->
+            context.contentResolver.query(uri, projection, queryArgs, null)?.use { cursor ->
                 val numIdx = cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER)
                 val nameIdx = cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME)
                 while (cursor.moveToNext()) {
@@ -88,7 +92,7 @@ class ContactsRepository(private val context: Context) {
                     if (cd.length >= 4) result[cd] = name
                 }
             }
-        } catch (_: SecurityException) {}
+        } catch (_: Exception) {}
         cache = result
         result
     }
