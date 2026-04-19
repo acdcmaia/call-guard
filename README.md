@@ -49,10 +49,10 @@ Em **Chamadas**, constam os registros de chamadas recebidas e bloqueadas (chamad
 ### Notificação persistente
 O app mantém uma notificação ativa enquanto o serviço de triagem estiver em execução:
 
-- **Fundo verde / ícone de escudo:** nenhuma chamada bloqueada desde a última vez que a notificação foi tocada
-- **Fundo vermelho / ícone de escudo com !:** indica quantas chamadas foram bloqueadas desde a última vez que a notificação foi tocada
+- **Fundo verde / ícone de escudo:** sem novos bloqueios desde a última abertura do app
+- **Fundo vermelho / ícone de escudo com !:** indica quantas chamadas foram bloqueadas desde a última abertura do app
 
-Ao tocar na notificação, o contador é zerado e a notificação volta ao estado verde.
+Ao abrir o app, o contador é zerado e a notificação volta ao estado verde.
 
 ## Compilação do projeto
 
