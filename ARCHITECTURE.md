@@ -193,7 +193,7 @@ flowchart LR
     D -- Sim --> E[Notificação vermelha\nN chamadas bloqueadas]
     D -- Não --> F[Notificação verde\nCall Guard ativo]
 
-    G[Usuário toca notificação] --> H[MarkSeenReceiver]
+    G[Usuário toca notificação] --> H[MainActivity.onResume]
     H --> I[seenBlockedCount = total atual]
     I --> C
 ```
