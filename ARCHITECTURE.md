@@ -193,7 +193,7 @@ flowchart LR
     D -- Sim --> E[Notificação vermelha\nN chamadas bloqueadas]
     D -- Não --> F[Notificação verde\nCall Guard ativo]
 
-    G[Usuário toca notificação] --> H[MarkSeenReceiver]
+    G[Usuário toca notificação] --> H[MainActivity.onResume]
     H --> I[seenBlockedCount = total atual]
     I --> C
 ```
@@ -310,7 +310,7 @@ Itens identificados na análise de 2026-04-18. Nenhum implementado ainda.
 | 5 | `CallGuardScreeningService` | `screenMutex` serializa todas as chamadas simultâneas; timeout do framework pode ser atingido se duas chamadas chegarem ao mesmo tempo | Médio |
 | 6 | `CallGuardApp` | `database` é `val` público — código fora dos repositórios pode acessar o DAO diretamente, bypassando a camada de repositório | Baixo |
 | 7 | `BlacklistScreen` | `collectAsState()` sem `lifecycle-awareness` — pode coletar em background mesmo quando a UI está parada | Baixo |
-| 8 | `BlacklistScreen` | `PopupPositionProvider` duplicado (agora removido de `SettingsScreen`) | Cosmético |
+| ~~8~~ | ~~`BlacklistScreen`~~ | ~~`PopupPositionProvider` duplicado~~ | **Resolvido** — `SettingsScreen` substituída por dialog, `PopupPositionProvider` existe apenas em `BlacklistScreen` |
 | 9 | múltiplos arquivos UI | `@OptIn(ExperimentalMaterial3Api::class)` repetido em vários arquivos | Cosmético |
 | 10 | 4 ViewModels | `ViewModelProvider.Factory` anônimo duplicado em cada ViewModel | Cosmético |
 | 11 | `ContactsRepository.loadCache()` | Sem limite de registros; em dispositivos com milhares de contatos pode causar pico de memória | Médio |
