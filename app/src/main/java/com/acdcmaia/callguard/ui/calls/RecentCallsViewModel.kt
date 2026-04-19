@@ -7,6 +7,7 @@ import com.acdcmaia.callguard.CallGuardApp
 import com.acdcmaia.callguard.data.CallHistoryItem
 import com.acdcmaia.callguard.data.CallLogRepository
 import com.acdcmaia.callguard.data.CallRepository
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -15,6 +16,7 @@ import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.transformLatest
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class RecentCallsViewModel(
     private val callLogRepo: CallLogRepository,
     callRepo: CallRepository
