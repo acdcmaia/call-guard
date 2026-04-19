@@ -1,20 +1,19 @@
 package com.acdcmaia.callguard.ui.settings
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.acdcmaia.callguard.BuildConfig
 import com.acdcmaia.callguard.callGuardApp
 import com.acdcmaia.callguard.data.SettingsRepository
-
-private val STEPS = listOf(1, 5, 10, 30, 60, 120, 180, 300, 600, 1800, 3600)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -24,17 +23,10 @@ fun SettingsScreen() {
         factory = SettingsViewModel.factory(context.callGuardApp)
     )
     val windowSeconds by vm.windowSeconds.collectAsState(initial = SettingsRepository.DEFAULT_WINDOW_SECONDS)
+    var input by remember(windowSeconds) { mutableStateOf(windowSeconds.toString()) }
+    val secs = input.toIntOrNull()
+    val isValid = secs != null && secs in 1..86400
     var showAbout by remember { mutableStateOf(false) }
-
-    fun decrease() {
-        val next = STEPS.lastOrNull { it < windowSeconds } ?: STEPS.first()
-        vm.setWindowSeconds(next)
-    }
-
-    fun increase() {
-        val next = STEPS.firstOrNull { it > windowSeconds } ?: STEPS.last()
-        vm.setWindowSeconds(next)
-    }
 
     Column(modifier = Modifier.fillMaxSize()) {
         TopAppBar(
@@ -49,28 +41,22 @@ fun SettingsScreen() {
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Text("Janela de tempo", style = MaterialTheme.typography.bodyLarge)
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            Text("Janela de tempo (segundos)", style = MaterialTheme.typography.bodyLarge)
+            OutlinedTextField(
+                value = input,
+                onValueChange = { input = it.filter { c -> c.isDigit() } },
+                label = { Text("Segundos") },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                isError = !isValid && input.isNotEmpty(),
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth()
+            )
+            Button(
+                onClick = { if (isValid) vm.setWindowSeconds(secs!!) },
+                enabled = isValid,
+                modifier = Modifier.fillMaxWidth()
             ) {
-                FilledTonalIconButton(
-                    onClick = ::decrease,
-                    enabled = windowSeconds > STEPS.first()
-                ) {
-                    Text("−", style = MaterialTheme.typography.titleLarge)
-                }
-                Text(
-                    text = formatSeconds(windowSeconds),
-                    style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.widthIn(min = 80.dp),
-                )
-                FilledTonalIconButton(
-                    onClick = ::increase,
-                    enabled = windowSeconds < STEPS.last()
-                ) {
-                    Text("+", style = MaterialTheme.typography.titleLarge)
-                }
+                Text("Salvar")
             }
         }
     }
@@ -92,10 +78,4 @@ fun SettingsScreen() {
             }
         )
     }
-}
-
-private fun formatSeconds(secs: Int): String = when {
-    secs < 60  -> "$secs s"
-    secs < 3600 -> "${secs / 60} min"
-    else        -> "${secs / 3600} h"
 }
