@@ -1,10 +1,13 @@
 package com.acdcmaia.callguard.data
 
+import android.Manifest
 import android.content.Context
+import android.content.pm.PackageManager
 import android.database.ContentObserver
 import android.os.Handler
 import android.os.Looper
 import android.provider.ContactsContract
+import androidx.core.content.ContextCompat
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -15,15 +18,32 @@ class ContactsRepository(private val context: Context) {
     @Volatile private var cache: Map<String, String>? = null  // digits -> displayName
     private val cacheMutex = Mutex()
 
+    private val contactsObserver = object : ContentObserver(Handler(Looper.getMainLooper())) {
+        override fun onChange(selfChange: Boolean) { cache = null }
+    }
+
     init {
         // Observer vive enquanto o processo viver — intencional, pois ContactsRepository
         // é singleton em CallGuardApp e deve acompanhar o ciclo de vida do processo.
+        // Só registra se READ_CONTACTS já foi concedida; caso contrário, registerPermission()
+        // deve ser chamado após o usuário conceder a permissão.
+        if (hasContactsPermission()) registerObserver()
+    }
+
+    fun registerPermission() {
+        if (hasContactsPermission()) {
+            cache = null
+            registerObserver()
+        }
+    }
+
+    private fun hasContactsPermission() =
+        ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CONTACTS) ==
+                PackageManager.PERMISSION_GRANTED
+
+    private fun registerObserver() {
         context.contentResolver.registerContentObserver(
-            ContactsContract.Contacts.CONTENT_URI,
-            true,
-            object : ContentObserver(Handler(Looper.getMainLooper())) {
-                override fun onChange(selfChange: Boolean) { cache = null }
-            }
+            ContactsContract.Contacts.CONTENT_URI, true, contactsObserver
         )
     }
 
@@ -47,6 +67,10 @@ class ContactsRepository(private val context: Context) {
     }
 
     private suspend fun loadCache(): Map<String, String> = withContext(Dispatchers.IO) {
+        if (!hasContactsPermission()) {
+            cache = emptyMap()
+            return@withContext emptyMap()
+        }
         val uri = ContactsContract.CommonDataKinds.Phone.CONTENT_URI
         val projection = arrayOf(
             ContactsContract.CommonDataKinds.Phone.NUMBER,
@@ -54,15 +78,17 @@ class ContactsRepository(private val context: Context) {
         )
         val result = mutableMapOf<String, String>()
 
-        context.contentResolver.query(uri, projection, null, null, null)?.use { cursor ->
-            val numIdx = cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER)
-            val nameIdx = cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME)
-            while (cursor.moveToNext()) {
-                val cd = cursor.getString(numIdx)?.filter { it.isDigit() } ?: continue
-                val name = cursor.getString(nameIdx) ?: continue
-                if (cd.length >= 4) result[cd] = name
+        try {
+            context.contentResolver.query(uri, projection, null, null, null)?.use { cursor ->
+                val numIdx = cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER)
+                val nameIdx = cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME)
+                while (cursor.moveToNext()) {
+                    val cd = cursor.getString(numIdx)?.filter { it.isDigit() } ?: continue
+                    val name = cursor.getString(nameIdx) ?: continue
+                    if (cd.length >= 4) result[cd] = name
+                }
             }
-        }
+        } catch (_: SecurityException) {}
         cache = result
         result
     }
