@@ -9,7 +9,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntRect
 import androidx.compose.ui.unit.IntSize
@@ -31,10 +33,10 @@ fun SettingsScreen() {
         factory = SettingsViewModel.factory(context.callGuardApp)
     )
     val windowSeconds by vm.windowSeconds.collectAsState(initial = SettingsRepository.DEFAULT_WINDOW_SECONDS)
-    var secondsInput by remember { mutableStateOf(windowSeconds.toString()) }
+    var secondsInput by remember { mutableStateOf(TextFieldValue(windowSeconds.toString())) }
     var fieldFocused by remember { mutableStateOf(false) }
     LaunchedEffect(windowSeconds) {
-        if (!fieldFocused) secondsInput = windowSeconds.toString()
+        if (!fieldFocused) secondsInput = TextFieldValue(windowSeconds.toString())
     }
     var showAbout by remember { mutableStateOf(false) }
     val tooltipState = rememberTooltipState(isPersistent = true)
@@ -80,7 +82,8 @@ fun SettingsScreen() {
                 OutlinedTextField(
                     value = secondsInput,
                     onValueChange = { v ->
-                        secondsInput = v.filter { it.isDigit() }
+                        val filtered = v.text.filter { it.isDigit() }
+                        secondsInput = v.copy(text = filtered)
                     },
                     label = { Text("Segundos") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
@@ -91,10 +94,13 @@ fun SettingsScreen() {
                         .onFocusChanged { focusState ->
                             fieldFocused = focusState.isFocused
                             if (focusState.isFocused) {
+                                secondsInput = secondsInput.copy(
+                                    selection = TextRange(0, secondsInput.text.length)
+                                )
                                 scope.launch { tooltipState.show() }
                             } else {
-                                val secs = (secondsInput.toIntOrNull() ?: 1).coerceIn(1, 86400)
-                                secondsInput = secs.toString()
+                                val secs = (secondsInput.text.toIntOrNull() ?: 1).coerceIn(1, 86400)
+                                secondsInput = TextFieldValue(secs.toString())
                                 vm.setWindowSeconds(secs)
                             }
                         }
