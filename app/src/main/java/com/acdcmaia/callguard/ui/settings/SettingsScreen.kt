@@ -32,9 +32,9 @@ fun SettingsScreen() {
     )
     val windowSeconds by vm.windowSeconds.collectAsState(initial = SettingsRepository.DEFAULT_WINDOW_SECONDS)
     var secondsInput by remember { mutableStateOf(windowSeconds.toString()) }
+    var fieldFocused by remember { mutableStateOf(false) }
     LaunchedEffect(windowSeconds) {
-        val current = secondsInput.toIntOrNull()
-        if (current != windowSeconds) secondsInput = windowSeconds.toString()
+        if (!fieldFocused) secondsInput = windowSeconds.toString()
     }
     var showAbout by remember { mutableStateOf(false) }
     val tooltipState = rememberTooltipState(isPersistent = true)
@@ -89,10 +89,12 @@ fun SettingsScreen() {
                         .fillMaxWidth()
                         .focusable()
                         .onFocusChanged { focusState ->
+                            fieldFocused = focusState.isFocused
                             if (focusState.isFocused) {
                                 scope.launch { tooltipState.show() }
                             } else {
                                 val secs = (secondsInput.toIntOrNull() ?: 1).coerceIn(1, 86400)
+                                secondsInput = secs.toString()
                                 vm.setWindowSeconds(secs)
                             }
                         }
