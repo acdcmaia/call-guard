@@ -51,7 +51,7 @@ Classe `Application`. Inicializa e expõe como singletons:
 - Verifica se o app possui o `ROLE_CALL_SCREENING` do Android
 - Se não tiver, exibe tela pedindo permissão via `RoleManager`
 - Se tiver, inicia o `CallGuardForegroundService`
-- Usa `launchMode="singleTop"` para que o `MarkSeenReceiver` possa reabrir o app sem criar instâncias duplicadas
+- Em `onResume()`, zera o contador da notificação: lê o total atual de bloqueadas e salva em `seenBlockedCount`, fazendo o delta voltar a zero e a notificação ficar verde
 
 ### `CallGuardScreeningService`
 Implementa `CallScreeningService` do Android. É vinculado pelo framework telecom a cada chamada recebida.
@@ -64,31 +64,30 @@ Implementa `CallScreeningService` do Android. É vinculado pelo framework teleco
 ### `ContactsRepository`
 Consulta `ContactsContract.CommonDataKinds.Phone` para verificar se um número pertence à agenda e obter o nome do contato. O cache é um `Map<String, String>` (dígitos → nome de exibição), invalidado via `ContentObserver` quando os contatos do dispositivo mudam. A comparação usa os últimos 8 dígitos para tolerar diferenças de código de país e formatação. O `ContentObserver` não é desregistrado intencionalmente — `ContactsRepository` é singleton de processo em `CallGuardApp`.
 
+O `ContentObserver` e as queries ao `ContentResolver` são guardados por verificação de `READ_CONTACTS` — se a permissão não foi concedida ainda, o `init` não registra o observer e `loadCache()` retorna mapa vazio. Após o usuário conceder a permissão, `RecentCallsScreen` chama `registerPermission()` para ativar o observer retroativamente.
+
 Métodos públicos:
 - `isContact(number)` — verifica se o número está na agenda
 - `getContactName(number)` — retorna o nome do contato, ou `null` se não encontrado
+- `registerPermission()` — registra o `ContentObserver` após permissão concedida em runtime
 
 ### `CallGuardForegroundService`
 Serviço de notificação persistente (`foregroundServiceType="specialUse"`, subtipo `callScreening`). Mantém o processo do app vivo para garantir que o `CallGuardScreeningService` seja vinculado pelo telecom sem ser morto pelo sistema.
 
 Observa em tempo real a combinação de dois flows:
 1. `CallRepository.countBlockedFlow()` — total acumulado de chamadas bloqueadas no Room (últimas 100)
-2. `SettingsRepository.seenBlockedCount` — total visto na última vez que a notificação foi tocada
+2. `SettingsRepository.seenBlockedCount` — total visto na última vez que o app foi aberto
 
 O delta entre os dois valores determina o estado da notificação:
 - **Delta = 0:** fundo verde, ícone de escudo simples, texto "Call Guard ativo"
 - **Delta > 0:** fundo vermelho, ícone de escudo com !, texto "N chamada(s) bloqueada(s)"
 
-O `PendingIntent` da notificação é cacheado como `lazy val` e aponta para `MarkSeenReceiver` (não para `MainActivity`, que é exported). Canal configurado com `IMPORTANCE_DEFAULT` + `setSilent(true)` para garantir `setColorized(true)` em OEMs como Samsung One UI.
+O `PendingIntent` da notificação aponta para `MainActivity` via `PendingIntent.getActivity()`. Canal configurado com `IMPORTANCE_DEFAULT` + `setSilent(true)` para garantir `setColorized(true)` em OEMs como Samsung One UI.
 
 Ao iniciar (via `onStartCommand`), executa uma única vez a poda de chamadas com mais de 30 dias e ajusta o `seenBlockedCount` para que não ultrapasse o novo total pós-poda.
 
 ### `MarkSeenReceiver`
-`BroadcastReceiver` com `android:exported="false"`. Recebe o broadcast `ACTION_MARK_SEEN` disparado quando o usuário toca na notificação persistente.
-
-- Usa `goAsync()` para executar trabalho assíncrono sem bloquear o main thread
-- Consulta o total atual de chamadas bloqueadas via `CallRepository.countBlockedOnce()` e salva em `SettingsRepository.seenBlockedCount`, zerando o contador da notificação
-- Abre `MainActivity` com `FLAG_ACTIVITY_NEW_TASK | FLAG_ACTIVITY_SINGLE_TOP | FLAG_ACTIVITY_CLEAR_TOP`
+`BroadcastReceiver` com `android:exported="false"`. Mantido no manifesto mas atualmente sem uso ativo — a lógica de reset do contador foi movida para `MainActivity.onResume()` (ver abaixo).
 
 ---
 
@@ -122,7 +121,7 @@ blockReason: BlockReason?  — BLACKLIST | FIRST_CALL | null (se permitida)
 | Chave | Tipo | Default | Descrição |
 |---|---|---|---|
 | `window_seconds` | Int | 120 | Janela de tempo em segundos |
-| `seen_blocked_count` | Long | -1 | Total de bloqueadas na última vez que a notificação foi tocada; -1 = primeiro uso |
+| `seen_blocked_count` | Long | -1 | Total de bloqueadas na última vez que o app foi aberto; -1 (nunca aberto) é tratado como 0 no cálculo do delta |
 
 ### `CallLogRepository`
 Agrega duas fontes para o histórico:
@@ -224,7 +223,7 @@ Bottom navigation com 3 abas:
 |---|---|---|
 | `calls` | `RecentCallsScreen` | Histórico de chamadas recebidas e bloqueadas (efetuadas não exibidas); nome do contato exibido quando disponível; bloqueadas em vermelho |
 | `blacklist` | `BlacklistScreen` | Gerenciar sequências bloqueadas; suporta adicionar, editar e remover |
-| `settings` | `SettingsScreen` | Janela de tempo em segundos; build info no ícone ⓘ |
+| `settings` | `SettingsScreen` | Janela de tempo: exibe valor atual; toque abre dialog com campo e botões Cancelar/Salvar; build info no ícone ⓘ |
 
 ---
 
@@ -260,10 +259,10 @@ Bloquear apenas com `setDisallowCall` silencia a chamada do lado do destinatári
 O log do sistema só registra chamadas após o fim da ligação. Para mostrar chamadas bloqueadas imediatamente, o `CallLogRepository` inclui registros do Room sem correspondência no log do sistema (`appOnly = true`). Quando o log do sistema eventualmente registra a entrada, ela substitui a entrada `appOnly` no próximo refresh.
 
 **Contador de notificação por delta de contagem**
-O estado da notificação é determinado pela diferença entre o total acumulado de chamadas bloqueadas no Room (limitado às 100 mais recentes, consistente com o histórico visível) e o valor `seenBlockedCount` salvo no DataStore. O valor `-1` em `seenBlockedCount` indica primeiro uso e é tratado como delta zero, evitando que chamadas históricas apareçam como "novas" na primeira execução.
+O estado da notificação é determinado pela diferença entre o total acumulado de chamadas bloqueadas no Room (limitado às 100 mais recentes, consistente com o histórico visível) e o valor `seenBlockedCount` salvo no DataStore. O valor `-1` (nunca inicializado) é tratado como `0` no cálculo — `maxOf(0L, total - maxOf(0L, seen))` — garantindo que a primeira chamada bloqueada já apareça na notificação.
 
-**`MarkSeenReceiver` em vez de `MainActivity` para resetar contador**
-`MainActivity` é `exported="true"` por necessidade do launcher — qualquer app poderia enviar `ACTION_MARK_SEEN` e zerar o contador. Mover a lógica para um `BroadcastReceiver` com `exported="false"` elimina o vetor de ataque. O `PendingIntent` usa `getBroadcast`, não `getActivity`.
+**Reset do contador em `MainActivity.onResume()`**
+O `seenBlockedCount` é atualizado para o total atual de chamadas bloqueadas sempre que `MainActivity` entra em primeiro plano, independente do caminho de entrada (launcher, notificação, etc.). A notificação usa `PendingIntent.getActivity()` apontando para `MainActivity` — tentar abrir a activity a partir de um `BroadcastReceiver` em background é bloqueado pelo Android 10+ e causava falha silenciosa.
 
 **`foregroundServiceType="specialUse"`**
 O tipo `dataSync` tem janela de execução máxima de 6 horas no Android 14+ (API 34). O tipo `specialUse` com subtipo declarado `callScreening` não tem essa limitação e reflete com precisão o propósito do serviço.
@@ -275,7 +274,10 @@ O tipo `dataSync` tem janela de execução máxima de 6 horas no Android 14+ (AP
 O `StateFlow` de histórico cancela a coleta 5 segundos após a última UI sair do ciclo de vida ativo. Isso evita releituras do `CallLog` do sistema em background a cada inserção no Room.
 
 **Tooltips com posicionamento abaixo do campo**
-O Material3 `TooltipDefaults` não expõe controle de posição vertical. É usado um `PopupPositionProvider` customizado que posiciona o balão em `anchorBounds.bottom`, garantindo que não ultrapassa a largura da janela. Aplicado nos campos "Segundos" (Configurações) e "Sequência de dígitos" (Lista Negra).
+O Material3 `TooltipDefaults` não expõe controle de posição vertical. É usado um `PopupPositionProvider` customizado que posiciona o balão em `anchorBounds.bottom`, garantindo que não ultrapassa a largura da janela. Aplicado no campo "Sequência de dígitos" (Lista Negra).
+
+**`SettingsScreen` baseada em dialog**
+O campo de texto para janela de tempo foi substituído por um `ListItem` clicável que abre um `AlertDialog` com o campo e botões Cancelar/Salvar, idêntico ao padrão da Lista Negra. Elimina problemas de salvamento dependente de foco (o valor só é persistido ao confirmar o dialog).
 
 ---
 
