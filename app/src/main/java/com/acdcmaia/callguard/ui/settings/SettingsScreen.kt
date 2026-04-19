@@ -1,5 +1,6 @@
 package com.acdcmaia.callguard.ui.settings
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -23,9 +24,7 @@ fun SettingsScreen() {
         factory = SettingsViewModel.factory(context.callGuardApp)
     )
     val windowSeconds by vm.windowSeconds.collectAsState(initial = SettingsRepository.DEFAULT_WINDOW_SECONDS)
-    var input by remember(windowSeconds) { mutableStateOf(windowSeconds.toString()) }
-    val secs = input.toIntOrNull()
-    val isValid = secs != null && secs in 1..86400
+    var showDialog by remember { mutableStateOf(false) }
     var showAbout by remember { mutableStateOf(false) }
 
     Column(modifier = Modifier.fillMaxSize()) {
@@ -37,28 +36,23 @@ fun SettingsScreen() {
                 }
             }
         )
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Text("Janela de tempo (segundos)", style = MaterialTheme.typography.bodyLarge)
-            OutlinedTextField(
-                value = input,
-                onValueChange = { input = it.filter { c -> c.isDigit() } },
-                label = { Text("Segundos") },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                isError = !isValid && input.isNotEmpty(),
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth()
-            )
-            Button(
-                onClick = { if (isValid) vm.setWindowSeconds(secs!!) },
-                enabled = isValid,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("Salvar")
+        ListItem(
+            headlineContent = { Text("Janela de tempo") },
+            supportingContent = { Text("$windowSeconds segundos") },
+            modifier = Modifier.clickable { showDialog = true }
+        )
+        HorizontalDivider()
+    }
+
+    if (showDialog) {
+        WindowSecondsDialog(
+            current = windowSeconds,
+            onDismiss = { showDialog = false },
+            onConfirm = { secs ->
+                vm.setWindowSeconds(secs)
+                showDialog = false
             }
-        }
+        )
     }
 
     if (showAbout) {
@@ -78,4 +72,39 @@ fun SettingsScreen() {
             }
         )
     }
+}
+
+@Composable
+private fun WindowSecondsDialog(
+    current: Int,
+    onDismiss: () -> Unit,
+    onConfirm: (Int) -> Unit
+) {
+    var input by remember { mutableStateOf(current.toString()) }
+    val secs = input.toIntOrNull()
+    val isValid = secs != null && secs in 1..86400
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Janela de tempo") },
+        text = {
+            OutlinedTextField(
+                value = input,
+                onValueChange = { input = it.filter { c -> c.isDigit() } },
+                label = { Text("Segundos") },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                isError = !isValid && input.isNotEmpty(),
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth()
+            )
+        },
+        confirmButton = {
+            TextButton(onClick = { if (isValid) onConfirm(secs!!) }, enabled = isValid) {
+                Text("Salvar")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancelar") }
+        }
+    )
 }
