@@ -7,6 +7,9 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -24,6 +27,7 @@ import kotlinx.coroutines.launch
 class MainActivity : ComponentActivity() {
 
     private lateinit var vm: MainViewModel
+    private var navigateTo by mutableStateOf<String?>(null)
 
     private val roleRequest = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
@@ -33,12 +37,16 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         vm = ViewModelProvider(this, MainViewModel.factory(callGuardApp))[MainViewModel::class.java]
+        navigateTo = intent?.getStringExtra(EXTRA_NAVIGATE_TO)
         vm.checkRole()
         setContent {
             CallGuardTheme {
                 val hasRole by vm.hasRole.collectAsStateWithLifecycle()
                 if (hasRole) {
-                    CallGuardNavigation()
+                    CallGuardNavigation(
+                        navigateTo = navigateTo,
+                        onNavigateConsumed = { navigateTo = null }
+                    )
                 } else {
                     Scaffold { padding ->
                         Column(
@@ -63,6 +71,11 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        navigateTo = intent.getStringExtra(EXTRA_NAVIGATE_TO)
+    }
+
     override fun onResume() {
         super.onResume()
         vm.checkRole()
@@ -70,6 +83,10 @@ class MainActivity : ComponentActivity() {
             val total = callGuardApp.callRepository.countBlockedOnce()
             callGuardApp.settingsRepository.setSeenBlockedCount(total)
         }
+    }
+
+    companion object {
+        const val EXTRA_NAVIGATE_TO = "navigate_to"
     }
 
     private fun requestRole() {
