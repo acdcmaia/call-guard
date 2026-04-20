@@ -18,20 +18,20 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.window.PopupPositionProvider
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.acdcmaia.callguard.BuildConfig
 import com.acdcmaia.callguard.callGuardApp
 import com.acdcmaia.callguard.data.SettingsRepository
 import kotlinx.coroutines.launch
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen() {
     val context = LocalContext.current
     val vm: SettingsViewModel = viewModel(
         factory = SettingsViewModel.factory(context.callGuardApp)
     )
-    val windowSeconds by vm.windowSeconds.collectAsState(initial = SettingsRepository.DEFAULT_WINDOW_SECONDS)
+    val windowSeconds by vm.windowSeconds.collectAsStateWithLifecycle(initialValue = SettingsRepository.DEFAULT_WINDOW_SECONDS)
     var showDialog by remember { mutableStateOf(false) }
     var showAbout by remember { mutableStateOf(false) }
 
@@ -82,7 +82,6 @@ fun SettingsScreen() {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun WindowSecondsDialog(
     current: Int,

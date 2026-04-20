@@ -19,6 +19,7 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.acdcmaia.callguard.callGuardApp
 import com.acdcmaia.callguard.data.CallHistoryItem
@@ -28,14 +29,13 @@ import java.time.LocalDateTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RecentCallsScreen() {
     val context = LocalContext.current
     val vm: RecentCallsViewModel = viewModel(
         factory = RecentCallsViewModel.factory(context.callGuardApp)
     )
-    val calls by vm.calls.collectAsState()
+    val calls by vm.calls.collectAsStateWithLifecycle()
     var permissionsDenied by remember { mutableStateOf(false) }
 
     val multiplePermissionsLauncher = rememberLauncherForActivityResult(
