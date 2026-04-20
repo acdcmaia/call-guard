@@ -82,7 +82,9 @@ O delta entre os dois valores determina o estado da notificação:
 - **Delta = 0:** fundo verde, ícone de escudo simples, texto "Call Guard ativo"
 - **Delta > 0:** fundo vermelho, ícone de escudo com !, texto "N chamada(s) bloqueada(s)"
 
-O `PendingIntent` da notificação aponta para `MainActivity` via `PendingIntent.getActivity()`. Canal configurado com `IMPORTANCE_DEFAULT` + `setSilent(true)` para garantir `setColorized(true)` em OEMs como Samsung One UI.
+O `PendingIntent` da notificação aponta para `MainActivity` via `PendingIntent.getActivity()`. Dois canais distintos controlam o badge do ícone do app:
+- `callguard_blocked` (`setShowBadge(true)`) — usado quando há bloqueios não vistos
+- `callguard_idle` (`setShowBadge(false)`) — usado no estado normal; suprime o badge mesmo com notificação ongoing
 
 Ao iniciar (via `onStartCommand`), executa uma única vez a poda de chamadas com mais de 30 dias e ajusta o `seenBlockedCount` para que não ultrapasse o novo total pós-poda.
 
@@ -267,8 +269,11 @@ O `seenBlockedCount` é atualizado para o total atual de chamadas bloqueadas sem
 **`foregroundServiceType="specialUse"`**
 O tipo `dataSync` tem janela de execução máxima de 6 horas no Android 14+ (API 34). O tipo `specialUse` com subtipo declarado `callScreening` não tem essa limitação e reflete com precisão o propósito do serviço.
 
-**`IMPORTANCE_DEFAULT` + `setSilent(true)` no canal de notificação**
+**`IMPORTANCE_DEFAULT` + `setSilent(true)` nos canais de notificação**
 `IMPORTANCE_LOW` impede `setColorized(true)` em Samsung One UI e possivelmente outros OEMs. `IMPORTANCE_DEFAULT` garante a colorização, e `setSilent(true)` suprime o som/vibração que `DEFAULT` normalmente produziria.
+
+**Dois canais para controle de badge**
+Um único canal com `setShowBadge(false)` aplicaria a mesma regra a todos os estados da notificação. Para que o badge apareça apenas quando há bloqueios não vistos e suma ao abrir o app, são usados dois canais: `callguard_blocked` com `setShowBadge(true)` e `callguard_idle` com `setShowBadge(false)`. A notificação alterna de canal conforme o delta. `setNumber()` complementa o controle em launchers que o respeitam.
 
 **`SharingStarted.WhileSubscribed(5_000)` no ViewModel**
 O `StateFlow` de histórico cancela a coleta 5 segundos após a última UI sair do ciclo de vida ativo. Isso evita releituras do `CallLog` do sistema em background a cada inserção no Room.
@@ -334,3 +339,4 @@ Itens das análises de 2026-04-18 e 2026-04-19.
 | ~~27~~ | ~~`CallGuardForegroundService`~~ | ~~`observeBlockedCount` sem `debounce` ou `distinctUntilChanged`~~ | **Resolvido** — `distinctUntilChanged()` + `debounce(500ms)` adicionados |
 | 28 | `RecentCallsScreen` | `DateTimeFormatter` (java.time) frágil se `minSdk` baixar abaixo de API 26 | Baixo |
 | 29 | `CallGuardScreeningService` | Sem fallback para ROMs que expõem o número em campo diferente de `handle?.schemeSpecificPart` | Médio |
+| ~~30~~ | ~~`CallGuardForegroundService`~~ | ~~Badge do ícone do app não zerava ao abrir o app pelo launcher — canal único com `setShowBadge` global não permite controle por estado~~ | **Resolvido** — dois canais (`callguard_blocked` / `callguard_idle`) com `setShowBadge` distintos; `setNumber()` complementar |
