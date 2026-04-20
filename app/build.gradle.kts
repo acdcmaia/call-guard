@@ -27,7 +27,7 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField("String", "BUILD_DATE", "\"$buildDate\"")
 
-        buildConfigField("String", "DEVELOPER", "\"Antonio Maia\"")
+        buildConfigField("String", "DEVELOPER", "\"acdcmaia\"")
     }
 
     buildTypes {
