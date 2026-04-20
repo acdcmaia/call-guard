@@ -13,7 +13,7 @@ val Context.callGuardApp: CallGuardApp
         ?: throw IllegalStateException("Application deve ser CallGuardApp")
 
 class CallGuardApp : Application() {
-    val database by lazy { AppDatabase.getInstance(this) }
+    private val database by lazy { AppDatabase.getInstance(this) }
     val callRepository by lazy { CallRepository(database) }
     val callLogRepository by lazy { CallLogRepository(this, database, contactsRepository) }
     val settingsRepository by lazy { SettingsRepository(this) }
