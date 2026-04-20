@@ -5,6 +5,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import java.io.IOException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
@@ -23,11 +24,11 @@ class SettingsRepository(private val context: Context) {
     }
 
     suspend fun setWindowSeconds(seconds: Int) {
-        context.dataStore.edit { it[WINDOW_SECONDS] = seconds }
+        try { context.dataStore.edit { it[WINDOW_SECONDS] = seconds } } catch (_: IOException) { }
     }
 
     suspend fun setSeenBlockedCount(count: Long) {
-        context.dataStore.edit { it[SEEN_BLOCKED_COUNT] = count }
+        try { context.dataStore.edit { it[SEEN_BLOCKED_COUNT] = count } } catch (_: IOException) { }
     }
 
     companion object {

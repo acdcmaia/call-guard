@@ -20,20 +20,20 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.PopupPositionProvider
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.ui.platform.LocalContext
 import com.acdcmaia.callguard.callGuardApp
 import com.acdcmaia.callguard.data.db.BlacklistPattern
 import kotlinx.coroutines.launch
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BlacklistScreen() {
     val context = LocalContext.current
     val vm: BlacklistViewModel = viewModel(
         factory = BlacklistViewModel.factory(context.callGuardApp)
     )
-    val patterns by vm.patterns.collectAsState(initial = emptyList())
+    val patterns by vm.patterns.collectAsStateWithLifecycle(initialValue = emptyList())
     var showAddDialog by remember { mutableStateOf(false) }
     var editTarget by remember { mutableStateOf<BlacklistPattern?>(null) }
 
@@ -100,7 +100,6 @@ private fun PatternItem(pattern: BlacklistPattern, onEdit: () -> Unit, onDelete:
     )
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun PatternDialog(
     title: String,
