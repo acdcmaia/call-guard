@@ -116,7 +116,7 @@ Ao iniciar (via `onStartCommand`), executa uma única vez a poda de chamadas com
 **`BlacklistPattern`**
 ```
 id (PK, autoincrement)
-pattern: String   — sequência de dígitos (ex: "98181")
+pattern: String   — sequência de dígitos (ex: "91234")
 label: String     — descrição opcional
 ```
 
@@ -220,8 +220,8 @@ A correspondência **não usa regex**. É uma busca de substring sobre os dígit
 ```
 número chamador : "+5521XXXXXXXX"
 dígitos extraídos: "5521XXXXXXXX"
-padrão na blacklist: "98181"
-resultado: BLOQUEADO  ✓  ("5521XXXXXXXX".contains("98181"))
+padrão na blacklist: "91234"
+resultado: BLOQUEADO  ✓  ("5521XXXXXXXX".contains("91234"))
 ```
 
 Wildcards não são suportados. O campo da lista negra aceita apenas dígitos.
