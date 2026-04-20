@@ -41,7 +41,7 @@ Em **Configurações**, defina quantos segundos o app aguarda por uma repetiçã
 ### Lista negra
 Em **Lista Negra**, adicione sequências de dígitos. Qualquer chamada cujo número contenha essa sequência será rejeitada.
 
-> Ex.: a sequência `91234` bloqueia chamadas de `021XXXXXXXXX`
+> Ex.: a sequência `91234` bloqueia chamadas de `02191234...`
 
 ### Histórico
 Em **Chamadas**, constam os registros de chamadas liberadas e bloqueadas (chamadas efetuadas não são exibidas). Para contatos salvos na agenda, o nome é exibido junto ao número. Chamadas bloqueadas aparecem em vermelho.
