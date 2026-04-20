@@ -218,10 +218,10 @@ flowchart LR
 A correspondência **não usa regex**. É uma busca de substring sobre os dígitos do número:
 
 ```
-número chamador : "+5521XXXXXXXX"
-dígitos extraídos: "5521XXXXXXXX"
+número chamador : "+5521912345678"
+dígitos extraídos: "5521912345678"
 padrão na blacklist: "91234"
-resultado: BLOQUEADO  ✓  ("5521XXXXXXXX".contains("91234"))
+resultado: BLOQUEADO  ✓  ("5521912345678".contains("91234"))
 ```
 
 Wildcards não são suportados. O campo da lista negra aceita apenas dígitos.
