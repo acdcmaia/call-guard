@@ -6,6 +6,17 @@ Aplicativo Android de triagem de chamadas. Bloqueia automaticamente chamadas de 
 
 ---
 
+## Histórico de versões
+
+### v0.1.1 (2026-04-20)
+- **fix:** badge do ícone do app não zerava ao abrir pelo launcher — dois canais de notificação (`callguard_blocked` com `setShowBadge(true)` e `callguard_idle` com `setShowBadge(false)`) resolvem o problema em MIUI e Nova Launcher
+- **fix:** APK release gerado pelo assistente de assinatura do Studio era renomeado com sufixo `.debug` quando o task `assembleDebug` processava a pasta `app/release/` — filtro `it.name.contains(variant)` corrige a renomeação cruzada
+
+### v0.1.0 (2026-04-19)
+- Versão inicial pública
+
+---
+
 ## Estrutura do projeto
 
 Projeto Android de módulo único (`app`), compilado com SDK 36, mínimo SDK 29 (Android 10).
@@ -306,7 +317,7 @@ Em dispositivos Xiaomi (MIUI) e Samsung, o framework telecom **ignora o `CallScr
 
 ## Melhorias pendentes
 
-Itens das análises de 2026-04-18 e 2026-04-19.
+Itens das análises de 2026-04-18 a 2026-04-20.
 
 | # | Arquivo | Problema | Impacto |
 |---|---|---|---|
