@@ -46,7 +46,7 @@ class CallGuardForegroundService : Service() {
 
     override fun onCreate() {
         super.onCreate()
-        createNotificationChannel()
+        createNotificationChannels()
         startForeground(NOTIFICATION_ID, buildNotification(0L))
         observeBlockedCount()
     }
@@ -77,7 +77,7 @@ class CallGuardForegroundService : Service() {
 
     private fun buildNotification(newBlockedCount: Long): Notification {
         return if (newBlockedCount > 0L) {
-            NotificationCompat.Builder(this, CHANNEL_ID)
+            NotificationCompat.Builder(this, CHANNEL_BLOCKED)
                 .setContentTitle(getString(R.string.app_name))
                 .setContentText(
                     resources.getQuantityString(
@@ -95,7 +95,7 @@ class CallGuardForegroundService : Service() {
                 .setSilent(true)
                 .build()
         } else {
-            NotificationCompat.Builder(this, CHANNEL_ID)
+            NotificationCompat.Builder(this, CHANNEL_IDLE)
                 .setContentTitle(getString(R.string.app_name))
                 .setContentText(getString(R.string.notification_active))
                 .setSmallIcon(R.drawable.ic_notification)
@@ -133,17 +133,23 @@ class CallGuardForegroundService : Service() {
 
     override fun onBind(intent: Intent?): IBinder? = null
 
-    private fun createNotificationChannel() {
-        val channel = NotificationChannel(
-            CHANNEL_ID,
-            getString(R.string.notification_channel_name),
+    private fun createNotificationChannels() {
+        val nm = getSystemService(NotificationManager::class.java)
+        NotificationChannel(
+            CHANNEL_BLOCKED,
+            getString(R.string.notification_channel_blocked),
             NotificationManager.IMPORTANCE_DEFAULT
-        )
-        getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
+        ).also { it.setShowBadge(true); nm.createNotificationChannel(it) }
+        NotificationChannel(
+            CHANNEL_IDLE,
+            getString(R.string.notification_channel_idle),
+            NotificationManager.IMPORTANCE_DEFAULT
+        ).also { it.setShowBadge(false); nm.createNotificationChannel(it) }
     }
 
     companion object {
-        private const val CHANNEL_ID = "callguard_status"
+        private const val CHANNEL_BLOCKED = "callguard_blocked"
+        private const val CHANNEL_IDLE = "callguard_idle"
         private const val NOTIFICATION_ID = 1
 
         fun start(context: Context) {
