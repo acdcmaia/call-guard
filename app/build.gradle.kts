@@ -22,12 +22,12 @@ android {
         minSdk = 29
         targetSdk = 36
         versionCode = 1
-        versionName = "1.0"
+        versionName = "0.1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField("String", "BUILD_DATE", "\"$buildDate\"")
 
-        buildConfigField("String", "DEVELOPER", "\"Antonio Maia\"")
+        buildConfigField("String", "DEVELOPER", "\"acdcmaia\"")
     }
 
     buildTypes {
