@@ -62,7 +62,7 @@ tasks.whenTaskAdded {
                     ?.filter { it.name.startsWith("app-") && it.extension == "apk" }
                     ?.forEach { apk ->
                         apk.copyTo(
-                            File(apk.parent, "CallGuard-${android.defaultConfig.versionName}-$variant-$buildDate.apk"),
+                            File(apk.parent, "CallGuard-${android.defaultConfig.versionName}-$buildDate-$variant.apk"),
                             overwrite = true
                         )
                     }
