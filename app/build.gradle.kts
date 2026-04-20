@@ -59,7 +59,7 @@ tasks.whenTaskAdded {
                 File(projectDir, "release")
             ).forEach { apkDir ->
                 apkDir.listFiles()
-                    ?.filter { it.name.startsWith("app-") && it.extension == "apk" }
+                    ?.filter { it.name.startsWith("app-") && it.name.contains(variant) && it.extension == "apk" }
                     ?.forEach { apk ->
                         apk.copyTo(
                             File(apk.parent, "CallGuard-v${android.defaultConfig.versionName}-b$buildDate.$variant.apk"),
