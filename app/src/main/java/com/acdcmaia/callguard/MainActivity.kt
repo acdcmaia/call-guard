@@ -73,7 +73,9 @@ class MainActivity : ComponentActivity() {
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
-        navigateTo = intent.getStringExtra(EXTRA_NAVIGATE_TO)
+        if (intent.`package` == null || intent.`package` == packageName) {
+            navigateTo = intent.getStringExtra(EXTRA_NAVIGATE_TO)
+        }
     }
 
     override fun onResume() {

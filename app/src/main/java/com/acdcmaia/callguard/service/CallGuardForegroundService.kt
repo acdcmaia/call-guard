@@ -115,7 +115,7 @@ class CallGuardForegroundService : Service() {
     }
 
     private fun pruneOldCalls() {
-        val cutoff = System.currentTimeMillis() - 30L * 24 * 60 * 60 * 1_000
+        val cutoff = System.currentTimeMillis() - PRUNE_WINDOW_MS
         serviceScope.launch {
             app.callRepository.pruneCallsBefore(cutoff)
             val newTotal = app.callRepository.countBlockedOnce()
@@ -148,6 +148,7 @@ class CallGuardForegroundService : Service() {
     }
 
     companion object {
+        private const val PRUNE_WINDOW_MS = 30L * 24 * 60 * 60 * 1_000
         private const val CHANNEL_BLOCKED = "callguard_blocked"
         private const val CHANNEL_IDLE = "callguard_idle"
         private const val NOTIFICATION_ID = 1
