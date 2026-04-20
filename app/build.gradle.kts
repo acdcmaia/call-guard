@@ -7,7 +7,7 @@ plugins {
     alias(libs.plugins.ksp)
 }
 
-val buildDate: String = SimpleDateFormat("yyMMdd-HHmm").format(Date())
+val buildDate: String = SimpleDateFormat("yyMMdd.HHmm").format(Date())
 
 android {
     namespace = "com.acdcmaia.callguard"
