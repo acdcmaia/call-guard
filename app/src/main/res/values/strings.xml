@@ -1,6 +1,8 @@
 <resources>
     <string name="app_name">Call Guard</string>
     <string name="notification_channel_name">Call Guard ativo</string>
+    <string name="notification_channel_blocked">Call Guard — chamadas bloqueadas</string>
+    <string name="notification_channel_idle">Call Guard — status</string>
     <string name="notification_text">Proteção contra chamadas indesejadas ativa</string>
     <string name="notification_active">Call Guard ativo</string>
     <plurals name="notification_blocked">
