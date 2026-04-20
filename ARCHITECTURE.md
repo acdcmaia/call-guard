@@ -326,10 +326,10 @@ Itens das análises de 2026-04-18 a 2026-04-20.
 | ~~3~~ | ~~`RecentCallsViewModel`~~ | ~~Exceção não capturada em `getMergedHistory()` cancela o `StateFlow` permanentemente~~ | **Resolvido** — try/catch em `transformLatest` mantém último estado; `CancellationException` relançada para preservar structured concurrency |
 | ~~4~~ | ~~`BlacklistViewModel.addPattern`~~ | ~~Usa `isBlank()` em vez de `isValidPattern()`; aceita padrões inválidos~~ | **Resolvido** — usa `isValidPattern()` |
 | 5 | `CallGuardScreeningService` | `screenMutex` serializa todas as chamadas simultâneas; timeout do framework pode ser atingido se duas chamadas chegarem ao mesmo tempo | Médio |
-| 6 | `CallGuardApp` | `database` é `val` público — código fora dos repositórios pode acessar o DAO diretamente, bypassando a camada de repositório | Baixo |
-| 7 | `BlacklistScreen` | `collectAsState()` sem `lifecycle-awareness` — pode coletar em background mesmo quando a UI está parada | Baixo |
+| ~~6~~ | ~~`CallGuardApp`~~ | ~~`database` é `val` público — código fora dos repositórios pode acessar o DAO diretamente, bypassando a camada de repositório~~ | **Resolvido** — `database` tornado `private` |
+| ~~7~~ | ~~`BlacklistScreen`~~ | ~~`collectAsState()` sem `lifecycle-awareness` — pode coletar em background mesmo quando a UI está parada~~ | **Resolvido** — `collectAsStateWithLifecycle()` em todas as telas |
 | ~~8~~ | ~~`BlacklistScreen`~~ | ~~`PopupPositionProvider` duplicado~~ | **Resolvido** — `SettingsScreen` substituída por dialog |
-| 9 | múltiplos arquivos UI | `@OptIn(ExperimentalMaterial3Api::class)` repetido em vários arquivos | Cosmético |
+| ~~9~~ | ~~múltiplos arquivos UI~~ | ~~`@OptIn(ExperimentalMaterial3Api::class)` repetido em vários arquivos~~ | **Resolvido** — centralizado via `freeCompilerArgs` no `build.gradle.kts` |
 | 10 | 4 ViewModels | `ViewModelProvider.Factory` anônimo duplicado em cada ViewModel | Cosmético |
 | ~~11~~ | ~~`ContactsRepository.loadCache()`~~ | ~~Sem limite de registros; pode causar pico de memória~~ | **Resolvido** — `QUERY_ARG_LIMIT = 5000` |
 | 12 | `RecentCall` | Campo `allowed: Boolean` é redundante com `blockReason == null`; requer migração de banco para remover | Baixo |
@@ -340,11 +340,11 @@ Itens das análises de 2026-04-18 a 2026-04-20.
 | 17 | `RecentCallDao` | `countBlockedFlow()` conta dentro das 100 mais recentes, mas após poda os IDs mudam — badge e histórico podem divergir | Médio |
 | 18 | `AndroidManifest` | `allowBackup="true"` expõe histórico de chamadas em backups ADB/Google Drive | Alto |
 | 19 | `CallGuardScreeningService` | Números de telefone completos impressos em logs — vazam dados em produção | Alto |
-| 20 | `MainActivity` | Sem validação de intent em `onNewIntent()` — vulnerável a intent spoofing por apps maliciosos | Médio |
+| ~~20~~ | ~~`MainActivity`~~ | ~~Sem validação de intent em `onNewIntent()` — vulnerável a intent spoofing por apps maliciosos~~ | **Resolvido** — validação de `intent.package` antes de processar extra |
 | 21 | `ContactsRepository` | `isContact()` e `getContactName()` duplicam a lógica de matching — extrair para método privado comum | Médio |
 | 22 | `CallLogRepository` | `getMergedHistory()` mistura merge, formatação e resolução de nomes na mesma função | Médio |
-| 23 | `SettingsRepository` | `edit()` do DataStore sem `try/catch` para `IOException` — corrupção do DataStore causa crash silencioso | Médio |
-| 24 | `CallGuardForegroundService` | `30L * 24 * 60 * 60 * 1_000` sem constante nomeada | Cosmético |
+| ~~23~~ | ~~`SettingsRepository`~~ | ~~`edit()` do DataStore sem `try/catch` para `IOException` — corrupção do DataStore causa crash silencioso~~ | **Resolvido** — try/catch adicionado em `setWindowSeconds` e `setSeenBlockedCount` |
+| ~~24~~ | ~~`CallGuardForegroundService`~~ | ~~`30L * 24 * 60 * 60 * 1_000` sem constante nomeada~~ | **Resolvido** — constante `PRUNE_WINDOW_MS` extraída |
 | 25 | `CallGuardScreeningService` | Blacklist percorrida com busca linear a cada chamada — lento com muitos padrões | Médio |
 | 26 | `CallGuardScreeningService` | 3 queries ao banco a cada chamada, sem cache de blacklist entre chamadas | Médio |
 | ~~27~~ | ~~`CallGuardForegroundService`~~ | ~~`observeBlockedCount` sem `debounce` ou `distinctUntilChanged`~~ | **Resolvido** — `distinctUntilChanged()` + `debounce(500ms)` adicionados |
