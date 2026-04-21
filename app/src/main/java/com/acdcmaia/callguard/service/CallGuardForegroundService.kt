@@ -139,12 +139,20 @@ class CallGuardForegroundService : Service() {
             CHANNEL_BLOCKED,
             getString(R.string.notification_channel_blocked),
             NotificationManager.IMPORTANCE_DEFAULT
-        ).also { it.setShowBadge(true); nm.createNotificationChannel(it) }
+        ).also {
+            it.setShowBadge(true)
+            it.lockscreenVisibility = Notification.VISIBILITY_SECRET
+            nm.createNotificationChannel(it)
+        }
         NotificationChannel(
             CHANNEL_IDLE,
             getString(R.string.notification_channel_idle),
             NotificationManager.IMPORTANCE_DEFAULT
-        ).also { it.setShowBadge(false); nm.createNotificationChannel(it) }
+        ).also {
+            it.setShowBadge(false)
+            it.lockscreenVisibility = Notification.VISIBILITY_SECRET
+            nm.createNotificationChannel(it)
+        }
     }
 
     companion object {
