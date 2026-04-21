@@ -8,6 +8,13 @@ Aplicativo Android de triagem de chamadas. Bloqueia automaticamente chamadas de 
 
 ## Histórico de versões
 
+### v0.1.4 (2026-04-21)
+- **feat:** auto-atualização — ao detectar nova versão, o app baixa o APK diretamente do GitHub release via `DownloadManager` e abre o instalador do sistema automaticamente
+- **feat:** barra de progresso de download na tela de Configurações durante o download
+- **feat:** verificação de permissão "Instalar apps desconhecidos" — se não concedida, redireciona para as configurações do sistema antes de iniciar o download
+- **chore:** permissão `REQUEST_INSTALL_PACKAGES` adicionada ao manifesto
+- **chore:** `FileProvider` configurado (`com.acdcmaia.callguard.fileprovider`) para expor o APK baixado via URI `content://`
+
 ### v0.1.3 (2026-04-21)
 - **feat:** checagem automática de atualização disponível na tela de Configurações — ao ganhar foco, o app consulta a GitHub API e exibe "Atualização disponível!" (vermelho) ou "Sem atualizações a fazer"
 - **feat:** item "Verificar atualizações" na lista de Configurações — abre o browser no releases do GitHub
@@ -248,7 +255,7 @@ Bottom navigation com 3 abas:
 |---|---|---|
 | `calls` | `RecentCallsScreen` | Histórico de chamadas liberadas e bloqueadas (efetuadas não exibidas); nome do contato exibido quando disponível; bloqueadas em vermelho |
 | `blacklist` | `BlacklistScreen` | Gerenciar sequências bloqueadas; suporta adicionar, editar e remover |
-| `settings` | `SettingsScreen` | Janela de tempo; Sobre (dialog com versão/build/desenvolvedor); Verificar atualizações (abre browser; exibe status da checagem automática via GitHub API) |
+| `settings` | `SettingsScreen` | Janela de tempo; Sobre (dialog com versão/build/desenvolvedor); Verificar atualizações (checagem automática via GitHub API; ao detectar nova versão, baixa e instala o APK sem sair do app) |
 
 ---
 
@@ -261,6 +268,7 @@ Bottom navigation com 3 abas:
 | `READ_CALL_LOG` | Ler o log de chamadas do sistema para o histórico |
 | `FOREGROUND_SERVICE` / `FOREGROUND_SERVICE_SPECIAL_USE` | Manter o serviço persistente ativo (tipo `specialUse`, subtipo `callScreening`) |
 | `POST_NOTIFICATIONS` | Notificação do `CallGuardForegroundService` |
+| `REQUEST_INSTALL_PACKAGES` | Instalar o APK baixado pelo mecanismo de auto-atualização |
 
 O role é solicitado via `RoleManager.createRequestRoleIntent`. Cada reinstalação revoga o role e gera novo UID, apagando a base de dados Room.
 
