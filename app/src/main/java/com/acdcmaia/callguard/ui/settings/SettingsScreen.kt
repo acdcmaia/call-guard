@@ -1,5 +1,8 @@
 package com.acdcmaia.callguard.ui.settings
 
+import android.content.Intent
+import android.net.Uri
+import android.provider.Settings
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.*
@@ -38,11 +41,25 @@ fun SettingsScreen() {
     )
     val windowSeconds by vm.windowSeconds.collectAsStateWithLifecycle(initialValue = SettingsRepository.DEFAULT_WINDOW_SECONDS)
     val updateStatus by vm.updateStatus.collectAsStateWithLifecycle()
+    val downloadProgress by vm.downloadProgress.collectAsStateWithLifecycle()
+    val apkUri by vm.apkUri.collectAsStateWithLifecycle()
     var showDialog by remember { mutableStateOf(false) }
     var showAbout by remember { mutableStateOf(false) }
     val uriHandler = LocalUriHandler.current
 
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { vm.checkForUpdates() }
+
+    LaunchedEffect(apkUri) {
+        apkUri?.let { uri ->
+            val intent = Intent(Intent.ACTION_VIEW).apply {
+                setDataAndType(uri, "application/vnd.android.package-archive")
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            context.startActivity(intent)
+            vm.onInstallTriggered()
+        }
+    }
 
     Column(modifier = Modifier.fillMaxSize()) {
         TopAppBar(title = { Text("Configurações") })
@@ -57,19 +74,40 @@ fun SettingsScreen() {
             leadingContent = { Icon(Icons.Default.Info, contentDescription = null) },
             modifier = Modifier.clickable { showAbout = true }
         )
+        val isDownloading = updateStatus == UpdateStatus.DOWNLOADING || updateStatus == UpdateStatus.READY_TO_INSTALL
         ListItem(
             headlineContent = {
-                val (text, color) = when (updateStatus) {
-                    UpdateStatus.CHECKING -> "Verificando atualizações…" to Color.Unspecified
-                    UpdateStatus.UP_TO_DATE -> "Sem atualizações a fazer" to Color.Unspecified
-                    UpdateStatus.UPDATE_AVAILABLE -> "Atualização disponível!" to Color.Red
-                    UpdateStatus.ERROR -> "Não foi possível verificar atualizações" to Color.Unspecified
+                when (updateStatus) {
+                    UpdateStatus.CHECKING -> Text("Verificando atualizações…")
+                    UpdateStatus.UP_TO_DATE -> Text("Sem atualizações a fazer")
+                    UpdateStatus.UPDATE_AVAILABLE -> Text("Atualização disponível!", color = Color.Red)
+                    UpdateStatus.ERROR -> Text("Não foi possível verificar atualizações")
+                    UpdateStatus.DOWNLOADING -> Column {
+                        Text("Baixando atualização… $downloadProgress%")
+                        LinearProgressIndicator(
+                            progress = { downloadProgress / 100f },
+                            modifier = Modifier.fillMaxWidth().padding(top = 6.dp)
+                        )
+                    }
+                    UpdateStatus.READY_TO_INSTALL -> Text("Abrindo instalador…")
+                    UpdateStatus.DOWNLOAD_ERROR -> Text("Erro ao baixar atualização", color = Color.Red)
                 }
-                Text(text, color = color)
             },
             leadingContent = { Icon(Icons.Default.Refresh, contentDescription = null) },
-            modifier = Modifier.clickable {
-                uriHandler.openUri("https://github.com/acdcmaia/call-guard/releases")
+            modifier = Modifier.clickable(enabled = !isDownloading) {
+                when (updateStatus) {
+                    UpdateStatus.UPDATE_AVAILABLE, UpdateStatus.DOWNLOAD_ERROR -> {
+                        if (!context.packageManager.canRequestPackageInstalls()) {
+                            val intent = Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES).apply {
+                                data = Uri.parse("package:${context.packageName}")
+                            }
+                            context.startActivity(intent)
+                        } else {
+                            vm.downloadUpdate(context)
+                        }
+                    }
+                    else -> uriHandler.openUri("https://github.com/acdcmaia/call-guard/releases")
+                }
             }
         )
     }
