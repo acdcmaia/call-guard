@@ -48,7 +48,6 @@ fun SettingsScreen() {
         HorizontalDivider()
         ListItem(
             headlineContent = { Text("Sobre") },
-            supportingContent = { Text("Call Guard v${BuildConfig.VERSION_NAME}") },
             leadingContent = { Icon(Icons.Default.Info, contentDescription = null) },
             modifier = Modifier.clickable { showAbout = true }
         )
