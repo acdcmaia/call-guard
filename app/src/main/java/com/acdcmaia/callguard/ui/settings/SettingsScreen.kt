@@ -62,7 +62,7 @@ fun SettingsScreen() {
                 val (text, color) = when (updateStatus) {
                     UpdateStatus.CHECKING -> "Verificando atualizações…" to Color.Unspecified
                     UpdateStatus.UP_TO_DATE -> "Sem atualizações a fazer" to Color.Unspecified
-                    UpdateStatus.UPDATE_AVAILABLE -> "Atualizações disponíveis!" to Color.Red
+                    UpdateStatus.UPDATE_AVAILABLE -> "Atualização disponível!" to Color.Red
                     UpdateStatus.ERROR -> "Não foi possível verificar atualizações" to Color.Unspecified
                 }
                 Text(text, color = color)
