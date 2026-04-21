@@ -1,10 +1,6 @@
 package com.acdcmaia.callguard.ui.calls
 
-import android.Manifest
-import android.content.pm.PackageManager
 import android.provider.CallLog
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -15,7 +11,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
@@ -36,53 +31,17 @@ fun RecentCallsScreen() {
         factory = RecentCallsViewModel.factory(context.callGuardApp)
     )
     val calls by vm.calls.collectAsStateWithLifecycle()
-    var permissionsDenied by remember { mutableStateOf(false) }
-
-    val multiplePermissionsLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestMultiplePermissions()
-    ) { results ->
-        if (results.values.all { it }) {
-            permissionsDenied = false
-            context.callGuardApp.contactsRepository.registerPermission()
-            vm.loadHistory()
-        } else {
-            permissionsDenied = true
-        }
-    }
 
     val lifecycleOwner = LocalLifecycleOwner.current
     LaunchedEffect(lifecycleOwner) {
         lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
-            val callLogGranted = ContextCompat.checkSelfPermission(
-                context, Manifest.permission.READ_CALL_LOG
-            ) == PackageManager.PERMISSION_GRANTED
-            val contactsGranted = ContextCompat.checkSelfPermission(
-                context, Manifest.permission.READ_CONTACTS
-            ) == PackageManager.PERMISSION_GRANTED
-
-            if (callLogGranted && contactsGranted) {
-                permissionsDenied = false
-                vm.loadHistory()
-            } else if (!permissionsDenied) {
-                val toRequest = buildList {
-                    if (!callLogGranted) add(Manifest.permission.READ_CALL_LOG)
-                    if (!contactsGranted) add(Manifest.permission.READ_CONTACTS)
-                }.toTypedArray()
-                multiplePermissionsLauncher.launch(toRequest)
-            }
+            vm.loadHistory()
         }
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
         TopAppBar(title = { Text("Chamadas") })
-        if (permissionsDenied) {
-            Box(modifier = Modifier.fillMaxSize().padding(24.dp), contentAlignment = Alignment.Center) {
-                Text(
-                    "Permissões necessárias não foram concedidas. Acesse Configurações do dispositivo → Aplicativos → Call Guard → Permissões para habilitar o acesso ao histórico de chamadas e contatos.",
-                    style = MaterialTheme.typography.bodyMedium
-                )
-            }
-        } else if (calls.isEmpty()) {
+        if (calls.isEmpty()) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Text("Nenhuma chamada encontrada")
             }
