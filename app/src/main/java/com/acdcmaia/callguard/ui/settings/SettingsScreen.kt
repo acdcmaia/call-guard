@@ -53,7 +53,6 @@ fun SettingsScreen() {
         )
         ListItem(
             headlineContent = { Text("Verificar atualizações") },
-            supportingContent = { Text("github.com/acdcmaia/call-guard/releases") },
             leadingContent = { Icon(Icons.Default.Refresh, contentDescription = null) },
             modifier = Modifier.clickable {
                 uriHandler.openUri("https://github.com/acdcmaia/call-guard/releases")
