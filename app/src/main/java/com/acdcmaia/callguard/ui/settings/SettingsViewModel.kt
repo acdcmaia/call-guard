@@ -36,9 +36,7 @@ class SettingsViewModel(private val settings: SettingsRepository) : ViewModel() 
                     val match = Regex("\"tag_name\"\\s*:\\s*\"v?([^\"]+)\"").find(json)
                     match?.groupValues?.get(1) ?: error("tag_name não encontrado")
                 }
-                val localDigits = BuildConfig.VERSION_NAME.filter { it.isDigit() }.toInt()
-                val remoteDigits = latest.filter { it.isDigit() }.toInt()
-                _updateStatus.value = if (remoteDigits > localDigits) UpdateStatus.UPDATE_AVAILABLE else UpdateStatus.UP_TO_DATE
+                _updateStatus.value = if (isNewer(latest, BuildConfig.VERSION_NAME)) UpdateStatus.UPDATE_AVAILABLE else UpdateStatus.UP_TO_DATE
             } catch (_: Exception) {
                 _updateStatus.value = UpdateStatus.ERROR
             }
@@ -50,6 +48,19 @@ class SettingsViewModel(private val settings: SettingsRepository) : ViewModel() 
     }
 
     companion object {
+        private fun isNewer(remote: String, local: String): Boolean {
+            val r = remote.split(".").map { it.toIntOrNull() ?: 0 }
+            val l = local.split(".").map { it.toIntOrNull() ?: 0 }
+            val size = maxOf(r.size, l.size)
+            for (i in 0 until size) {
+                val rv = r.getOrElse(i) { 0 }
+                val lv = l.getOrElse(i) { 0 }
+                if (rv != lv) return rv > lv
+            }
+            return false
+        }
+
+
         fun factory(app: CallGuardApp) = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T =
