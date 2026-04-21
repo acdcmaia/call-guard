@@ -8,6 +8,13 @@ Aplicativo Android de triagem de chamadas. Bloqueia automaticamente chamadas de 
 
 ## Histórico de versões
 
+### v0.1.3 (2026-04-21)
+- **feat:** checagem automática de atualização disponível na tela de Configurações — ao ganhar foco, o app consulta a GitHub API e exibe "Atualização disponível!" (vermelho) ou "Sem atualizações a fazer"
+- **feat:** item "Verificar atualizações" na lista de Configurações — abre o browser no releases do GitHub
+- **feat:** item "Sobre" movido para lista de Configurações (era ícone "i" oculto no TopAppBar)
+- **fix:** comparação de versões feita componente a componente (corrige casos como `0.1.10` vs `0.2.0`)
+- **fix:** permissão `INTERNET` adicionada ao manifesto
+
 ### v0.1.2 (2026-04-21)
 - **feat:** onboarding unificado — ao abrir o app pela primeira vez, o usuário configura em sequência: role de triagem → permissões (Contatos, Histórico, Notificações) → isenção de bateria
 - **fix:** notificação oculta na tela de bloqueio (`VISIBILITY_SECRET` nos dois canais)
@@ -241,7 +248,7 @@ Bottom navigation com 3 abas:
 |---|---|---|
 | `calls` | `RecentCallsScreen` | Histórico de chamadas liberadas e bloqueadas (efetuadas não exibidas); nome do contato exibido quando disponível; bloqueadas em vermelho |
 | `blacklist` | `BlacklistScreen` | Gerenciar sequências bloqueadas; suporta adicionar, editar e remover |
-| `settings` | `SettingsScreen` | Janela de tempo: exibe valor atual; toque abre dialog com campo e botões Cancelar/Salvar; build info no ícone ⓘ |
+| `settings` | `SettingsScreen` | Janela de tempo; Sobre (dialog com versão/build/desenvolvedor); Verificar atualizações (abre browser; exibe status da checagem automática via GitHub API) |
 
 ---
 
