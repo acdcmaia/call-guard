@@ -8,7 +8,7 @@ Aplicativo Android de triagem de chamadas. Bloqueia automaticamente chamadas de 
 
 ## Histórico de versões
 
-### v0.1.2 (em desenvolvimento)
+### v0.1.2 (2026-04-21)
 - **feat:** onboarding unificado — ao abrir o app pela primeira vez, o usuário configura em sequência: role de triagem → permissões (Contatos, Histórico, Notificações) → isenção de bateria
 - **fix:** notificação oculta na tela de bloqueio (`VISIBILITY_SECRET` nos dois canais)
 - **fix:** itens de qualidade e segurança: `database` privado, `collectAsStateWithLifecycle()` em todas as telas, `@OptIn` centralizado, validação de intent em `onNewIntent()`, `try/catch IOException` no DataStore, constante `PRUNE_WINDOW_MS`
