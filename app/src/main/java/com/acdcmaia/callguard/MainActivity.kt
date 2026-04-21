@@ -2,7 +2,9 @@ package com.acdcmaia.callguard
 
 import android.app.role.RoleManager
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
+import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -33,21 +35,22 @@ class MainActivity : ComponentActivity() {
         ActivityResultContracts.StartActivityForResult()
     ) { vm.checkRole() }
 
+    private val batteryRequest = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { vm.checkBatteryOptimization() }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         vm = ViewModelProvider(this, MainViewModel.factory(callGuardApp))[MainViewModel::class.java]
         navigateTo = intent?.getStringExtra(EXTRA_NAVIGATE_TO)
         vm.checkRole()
+        vm.checkBatteryOptimization()
         setContent {
             CallGuardTheme {
                 val hasRole by vm.hasRole.collectAsStateWithLifecycle()
-                if (hasRole) {
-                    CallGuardNavigation(
-                        navigateTo = navigateTo,
-                        onNavigateConsumed = { navigateTo = null }
-                    )
-                } else {
+                val isBatteryUnrestricted by vm.isBatteryUnrestricted.collectAsStateWithLifecycle()
+                if (!hasRole) {
                     Scaffold { padding ->
                         Column(
                             modifier = Modifier
@@ -66,6 +69,36 @@ class MainActivity : ComponentActivity() {
                             }
                         }
                     }
+                } else if (!isBatteryUnrestricted) {
+                    Scaffold { padding ->
+                        Column(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(padding)
+                                .padding(24.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            Text("Para funcionar de forma confiável, o Call Guard precisa ser isento de restrições de bateria.")
+                            Button(
+                                onClick = { requestBatteryOptimization() },
+                                modifier = Modifier.padding(top = 16.dp)
+                            ) {
+                                Text("Configurar bateria")
+                            }
+                            TextButton(
+                                onClick = { vm.checkBatteryOptimization() },
+                                modifier = Modifier.padding(top = 8.dp)
+                            ) {
+                                Text("Já configurei")
+                            }
+                        }
+                    }
+                } else {
+                    CallGuardNavigation(
+                        navigateTo = navigateTo,
+                        onNavigateConsumed = { navigateTo = null }
+                    )
                 }
             }
         }
@@ -81,6 +114,7 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         vm.checkRole()
+        vm.checkBatteryOptimization()
         lifecycleScope.launch(Dispatchers.IO) {
             val total = callGuardApp.callRepository.countBlockedOnce()
             callGuardApp.settingsRepository.setSeenBlockedCount(total)
@@ -95,5 +129,12 @@ class MainActivity : ComponentActivity() {
         val rm = getSystemService(RoleManager::class.java)
         val intent = rm.createRequestRoleIntent(RoleManager.ROLE_CALL_SCREENING)
         roleRequest.launch(intent)
+    }
+
+    private fun requestBatteryOptimization() {
+        val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
+            data = Uri.parse("package:$packageName")
+        }
+        batteryRequest.launch(intent)
     }
 }
