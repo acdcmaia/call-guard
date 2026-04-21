@@ -38,20 +38,19 @@ fun SettingsScreen() {
     var showAbout by remember { mutableStateOf(false) }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        TopAppBar(
-            title = { Text("Configurações") },
-            actions = {
-                IconButton(onClick = { showAbout = true }) {
-                    Icon(Icons.Default.Info, contentDescription = "Sobre")
-                }
-            }
-        )
+        TopAppBar(title = { Text("Configurações") })
         ListItem(
             headlineContent = { Text("Janela de tempo") },
             supportingContent = { Text(if (windowSeconds == 1) "1 segundo" else "$windowSeconds segundos") },
             modifier = Modifier.clickable { showDialog = true }
         )
         HorizontalDivider()
+        ListItem(
+            headlineContent = { Text("Sobre") },
+            supportingContent = { Text("Call Guard v${BuildConfig.VERSION_NAME}") },
+            leadingContent = { Icon(Icons.Default.Info, contentDescription = null) },
+            modifier = Modifier.clickable { showAbout = true }
+        )
     }
 
     if (showDialog) {
