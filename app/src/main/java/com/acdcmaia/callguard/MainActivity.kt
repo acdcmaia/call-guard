@@ -60,17 +60,17 @@ class MainActivity : ComponentActivity() {
                         buttonLabel = "Conceder permissão",
                         onAction = { requestRole() }
                     )
+                    !hasPermissions -> SetupStep(
+                        message = "O Call Guard precisa de acesso aos seus contatos, histórico de chamadas e permissão para exibir notificações.",
+                        buttonLabel = "Conceder permissões",
+                        onAction = { permissionsRequest.launch(MainViewModel.requiredPermissions()) }
+                    )
                     !isBatteryUnrestricted -> SetupStep(
                         message = "Para funcionar de forma confiável, o Call Guard precisa ser isento de restrições de bateria.",
                         buttonLabel = "Configurar bateria",
                         onAction = { requestBatteryOptimization() },
                         secondaryButtonLabel = "Já configurei",
                         onSecondaryAction = { vm.checkBatteryOptimization() }
-                    )
-                    !hasPermissions -> SetupStep(
-                        message = "O Call Guard precisa de acesso aos seus contatos, histórico de chamadas e permissão para exibir notificações.",
-                        buttonLabel = "Conceder permissões",
-                        onAction = { permissionsRequest.launch(MainViewModel.requiredPermissions()) }
                     )
                     else -> CallGuardNavigation(
                         navigateTo = navigateTo,
