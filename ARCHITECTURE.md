@@ -8,6 +8,11 @@ Aplicativo Android de triagem de chamadas. Bloqueia automaticamente chamadas de 
 
 ## Histórico de versões
 
+### v0.1.2 (em desenvolvimento)
+- **feat:** onboarding unificado — ao abrir o app pela primeira vez, o usuário configura em sequência: role de triagem → permissões (Contatos, Histórico, Notificações) → isenção de bateria
+- **fix:** notificação oculta na tela de bloqueio (`VISIBILITY_SECRET` nos dois canais)
+- **fix:** itens de qualidade e segurança: `database` privado, `collectAsStateWithLifecycle()` em todas as telas, `@OptIn` centralizado, validação de intent em `onNewIntent()`, `try/catch IOException` no DataStore, constante `PRUNE_WINDOW_MS`
+
 ### v0.1.1 (2026-04-20)
 - **fix:** badge do ícone do app não zerava ao abrir pelo launcher — dois canais de notificação (`callguard_blocked` com `setShowBadge(true)` e `callguard_idle` com `setShowBadge(false)`) resolvem o problema em MIUI e no Samsung Launcher
 - **fix:** APK release gerado pelo assistente de assinatura do Studio era renomeado com sufixo `.debug` quando o task `assembleDebug` processava a pasta `app/release/` — filtro `it.name.contains(variant)` corrige a renomeação cruzada
