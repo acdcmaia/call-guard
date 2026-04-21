@@ -7,6 +7,9 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.ui.graphics.Color
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -34,9 +37,12 @@ fun SettingsScreen() {
         factory = SettingsViewModel.factory(context.callGuardApp)
     )
     val windowSeconds by vm.windowSeconds.collectAsStateWithLifecycle(initialValue = SettingsRepository.DEFAULT_WINDOW_SECONDS)
+    val updateStatus by vm.updateStatus.collectAsStateWithLifecycle()
     var showDialog by remember { mutableStateOf(false) }
     var showAbout by remember { mutableStateOf(false) }
     val uriHandler = LocalUriHandler.current
+
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { vm.checkForUpdates() }
 
     Column(modifier = Modifier.fillMaxSize()) {
         TopAppBar(title = { Text("Configurações") })
@@ -52,7 +58,15 @@ fun SettingsScreen() {
             modifier = Modifier.clickable { showAbout = true }
         )
         ListItem(
-            headlineContent = { Text("Verificar atualizações") },
+            headlineContent = {
+                val (text, color) = when (updateStatus) {
+                    UpdateStatus.CHECKING -> "Verificando atualizações…" to Color.Unspecified
+                    UpdateStatus.UP_TO_DATE -> "Sem atualizações a fazer" to Color.Unspecified
+                    UpdateStatus.UPDATE_AVAILABLE -> "Atualizações disponíveis!" to Color.Red
+                    UpdateStatus.ERROR -> "Não foi possível verificar atualizações" to Color.Unspecified
+                }
+                Text(text, color = color)
+            },
             leadingContent = { Icon(Icons.Default.Refresh, contentDescription = null) },
             modifier = Modifier.clickable {
                 uriHandler.openUri("https://github.com/acdcmaia/call-guard/releases")
