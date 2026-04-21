@@ -17,6 +17,8 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.window.PopupPositionProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -64,6 +66,7 @@ fun SettingsScreen() {
     }
 
     if (showAbout) {
+        val uriHandler = LocalUriHandler.current
         AlertDialog(
             onDismissRequest = { showAbout = false },
             title = { Text("Sobre") },
@@ -73,6 +76,14 @@ fun SettingsScreen() {
                     Text("Versão: ${BuildConfig.VERSION_NAME}")
                     Text("Build: ${BuildConfig.BUILD_DATE}")
                     Text("Desenvolvedor: ${BuildConfig.DEVELOPER}")
+                    Text(
+                        "Verificar atualizações",
+                        color = MaterialTheme.colorScheme.primary,
+                        textDecoration = TextDecoration.Underline,
+                        modifier = Modifier.clickable {
+                            uriHandler.openUri("https://github.com/acdcmaia/call-guard/releases")
+                        }
+                    )
                 }
             },
             confirmButton = {
