@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -18,7 +19,6 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
-import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.window.PopupPositionProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -36,6 +36,7 @@ fun SettingsScreen() {
     val windowSeconds by vm.windowSeconds.collectAsStateWithLifecycle(initialValue = SettingsRepository.DEFAULT_WINDOW_SECONDS)
     var showDialog by remember { mutableStateOf(false) }
     var showAbout by remember { mutableStateOf(false) }
+    val uriHandler = LocalUriHandler.current
 
     Column(modifier = Modifier.fillMaxSize()) {
         TopAppBar(title = { Text("Configurações") })
@@ -51,6 +52,14 @@ fun SettingsScreen() {
             leadingContent = { Icon(Icons.Default.Info, contentDescription = null) },
             modifier = Modifier.clickable { showAbout = true }
         )
+        ListItem(
+            headlineContent = { Text("Verificar atualizações") },
+            supportingContent = { Text("github.com/acdcmaia/call-guard/releases") },
+            leadingContent = { Icon(Icons.Default.Refresh, contentDescription = null) },
+            modifier = Modifier.clickable {
+                uriHandler.openUri("https://github.com/acdcmaia/call-guard/releases")
+            }
+        )
     }
 
     if (showDialog) {
@@ -65,7 +74,6 @@ fun SettingsScreen() {
     }
 
     if (showAbout) {
-        val uriHandler = LocalUriHandler.current
         AlertDialog(
             onDismissRequest = { showAbout = false },
             title = { Text("Sobre") },
@@ -75,14 +83,6 @@ fun SettingsScreen() {
                     Text("Versão: ${BuildConfig.VERSION_NAME}")
                     Text("Build: ${BuildConfig.BUILD_DATE}")
                     Text("Desenvolvedor: ${BuildConfig.DEVELOPER}")
-                    Text(
-                        "Verificar atualizações",
-                        color = MaterialTheme.colorScheme.primary,
-                        textDecoration = TextDecoration.Underline,
-                        modifier = Modifier.clickable {
-                            uriHandler.openUri("https://github.com/acdcmaia/call-guard/releases")
-                        }
-                    )
                 }
             },
             confirmButton = {
