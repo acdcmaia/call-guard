@@ -288,17 +288,26 @@ Bottom navigation com 3 abas:
 
 ## Permissões e role
 
+**Concedidas automaticamente na instalação (permissões normais):**
+
 | Permissão | Motivo |
 |---|---|
-| `ROLE_CALL_SCREENING` | Obrigatório para o `CallScreeningService` ser vinculado pelo telecom |
-| `READ_CONTACTS` | Verificar se o número chamador está na agenda e resolver nomes |
-| `READ_CALL_LOG` | Ler o log de chamadas do sistema para o histórico |
+| `INTERNET` | Consultar a GitHub API e baixar APKs de atualização |
 | `FOREGROUND_SERVICE` / `FOREGROUND_SERVICE_SPECIAL_USE` | Manter o serviço persistente ativo (tipo `specialUse`, subtipo `callScreening`) |
-| `POST_NOTIFICATIONS` | Notificação do `CallGuardForegroundService` |
-| `REQUEST_INSTALL_PACKAGES` | Instalar o APK baixado pelo mecanismo de auto-atualização |
 | `RECEIVE_BOOT_COMPLETED` | Receber o broadcast de reinicialização para iniciar o serviço automaticamente |
 
-O role é solicitado via `RoleManager.createRequestRoleIntent`. Cada reinstalação revoga o role e gera novo UID, apagando a base de dados Room.
+**Solicitadas em runtime (exigem ação do usuário):**
+
+| Permissão | Como é solicitada | Motivo |
+|---|---|---|
+| `ROLE_CALL_SCREENING` | Dialog de role do sistema (onboarding) | Obrigatório para o `CallScreeningService` ser vinculado pelo telecom |
+| `READ_CONTACTS` | Dialog do sistema (onboarding) | Verificar se o número chamador está na agenda e resolver nomes |
+| `READ_CALL_LOG` | Dialog do sistema (onboarding) | Ler o log de chamadas do sistema para o histórico |
+| `POST_NOTIFICATIONS` | Dialog do sistema (onboarding, Android 13+) | Notificação do `CallGuardForegroundService` |
+| `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` | Dialog do sistema (onboarding) | Evitar que o SO mate o serviço em background |
+| `REQUEST_INSTALL_PACKAGES` | Redireciona para Settings (ao baixar atualização) | Instalar o APK baixado pelo mecanismo de auto-atualização |
+
+O role é solicitado via `RoleManager.createRequestRoleIntent`. É exclusivo — só um app pode deter o role por vez. Cada reinstalação revoga o role e gera novo UID, apagando a base de dados Room.
 
 ---
 
