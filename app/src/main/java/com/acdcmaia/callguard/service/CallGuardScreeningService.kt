@@ -36,6 +36,11 @@ class CallGuardScreeningService : CallScreeningService() {
     }
 
     override fun onScreenCall(callDetails: Call.Details) {
+        if (callDetails.callDirection == Call.Details.DIRECTION_OUTGOING) {
+            respondToCall(callDetails, CallResponse.Builder().build())
+            return
+        }
+
         val number = callDetails.handle?.schemeSpecificPart ?: run {
             Log.w(TAG, "onScreenCall: handle null, allowing")
             respondToCall(callDetails, CallResponse.Builder().build())

@@ -10,6 +10,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
@@ -23,11 +24,13 @@ import androidx.compose.ui.unit.IntRect
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.window.PopupPositionProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.acdcmaia.callguard.AutoStartHelper
 import com.acdcmaia.callguard.BuildConfig
 import com.acdcmaia.callguard.callGuardApp
 import com.acdcmaia.callguard.data.SettingsRepository
@@ -43,6 +46,8 @@ fun SettingsScreen() {
     val updateStatus by vm.updateStatus.collectAsStateWithLifecycle()
     val downloadProgress by vm.downloadProgress.collectAsStateWithLifecycle()
     val apkUri by vm.apkUri.collectAsStateWithLifecycle()
+    val autostartConfigured by vm.autostartConfigured.collectAsStateWithLifecycle(initialValue = true)
+    val autostartSupported = remember { AutoStartHelper.canOpen(context) }
     var showDialog by remember { mutableStateOf(false) }
     var showAbout by remember { mutableStateOf(false) }
     val uriHandler = LocalUriHandler.current
@@ -69,6 +74,18 @@ fun SettingsScreen() {
             modifier = Modifier.clickable { showDialog = true }
         )
         HorizontalDivider()
+        if (autostartSupported) {
+            val autostartColor = if (autostartConfigured) Color.Unspecified else Color.Red
+            ListItem(
+                headlineContent = { Text("Início automático do aplicativo", color = autostartColor) },
+                leadingContent = { Icon(Icons.Default.Settings, contentDescription = null, tint = if (autostartConfigured) LocalContentColor.current else Color.Red) },
+                modifier = Modifier.clickable {
+                    AutoStartHelper.open(context)
+                    vm.markAutostartConfigured()
+                }
+            )
+            HorizontalDivider()
+        }
         ListItem(
             headlineContent = { Text("Sobre") },
             leadingContent = { Icon(Icons.Default.Info, contentDescription = null) },

@@ -29,6 +29,11 @@ enum class UpdateStatus {
 class SettingsViewModel(private val settings: SettingsRepository) : ViewModel() {
 
     val windowSeconds: Flow<Int> = settings.windowSeconds
+    val autostartConfigured: Flow<Boolean> = settings.autostartConfigured
+
+    fun markAutostartConfigured() {
+        viewModelScope.launch { settings.setAutostartConfigured() }
+    }
 
     private val _updateStatus = MutableStateFlow(UpdateStatus.CHECKING)
     val updateStatus: StateFlow<UpdateStatus> = _updateStatus

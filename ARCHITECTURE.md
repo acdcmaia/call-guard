@@ -8,6 +8,15 @@ Aplicativo Android de triagem de chamadas. Bloqueia automaticamente chamadas de 
 
 ## Histórico de versões
 
+### v0.1.5 (2026-04-23)
+- **feat:** início automático após reinicialização do dispositivo (`BootReceiver` + `RECEIVE_BOOT_COMPLETED`)
+- **feat:** tela de onboarding para configuração de início automático em fabricantes com restrição (Xiaomi, Samsung, Huawei, Honor, OPPO, Realme, Vivo, OnePlus, Asus, Meizu, Nokia); atalho direto para as configurações do fabricante via `AutoStartHelper`
+- **feat:** nova opção "Início automático do aplicativo" na tela de Configurações, destacada em vermelho quando ainda não configurado
+- **fix:** chamadas efetuadas apareciam como "Liberada" no histórico — `onScreenCall` dispara para saídas (`DIRECTION_OUTGOING`) no Android 10+; adicionado retorno antecipado para esse caso
+- **fix:** chamadas bloqueadas pelo SO (`BLOCKED_TYPE`) apareciam como "Liberada" em vez de "Bloqueada"
+- **fix (MIUI):** falso `BOOT_COMPLETED` disparado pelo processo de backup do MIUI durante instalação causava crash — bloqueado por verificação de uptime (`SystemClock.elapsedRealtime() > 5 min`)
+- **fix (MIUI):** `ForegroundServiceDidNotStartInTimeException` causava crash silencioso na primeira abertura — interceptada via `UncaughtExceptionHandler` em `CallGuardApp`
+
 ### v0.1.4 (2026-04-21)
 - **feat:** auto-atualização — ao detectar nova versão, o app baixa o APK diretamente do GitHub release via `DownloadManager` e abre o instalador do sistema automaticamente
 - **feat:** barra de progresso de download na tela de Configurações durante o download
@@ -47,6 +56,7 @@ call-guard/
 │   └── java/com/acdcmaia/callguard/
 │       ├── CallGuardApp.kt          # Application — inicializa repositórios
 │       ├── MainActivity.kt          # Entrada + gestão do role de triagem
+│       ├── AutoStartHelper.kt       # Atalhos para configurações de início automático por fabricante
 │       ├── data/
 │       │   ├── db/                  # Room: entidades, DAOs, base de dados
 │       │   ├── CallRepository.kt    # Blacklist + chamadas recentes
@@ -57,6 +67,7 @@ call-guard/
 │       ├── service/
 │       │   ├── CallGuardScreeningService.kt  # Triagem de chamadas
 │       │   ├── CallGuardForegroundService.kt # Notificação persistente dinâmica
+│       │   ├── BootReceiver.kt               # Inicia o serviço após reinicialização do dispositivo
 │       │   └── MarkSeenReceiver.kt           # Receptor de broadcast para marcar notificação como vista
 │       └── ui/
 │           ├── Navigation.kt        # Bottom navigation (3 abas)
