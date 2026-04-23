@@ -29,7 +29,7 @@ flowchart LR
   - Leitura do histórico de chamadas (`READ_CALL_LOG`)
   - Notificações (`POST_NOTIFICATIONS`) — Android 13 ou superior
   - Isenção de otimização de bateria (`REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`)
-  - Instalação de aplicativos de fontes desconhecidas — concedida em **Configurações → Aplicativos → [app usado para abrir o APK] → Instalar apps desconhecidos**
+  - Instalação de aplicativos de fontes desconhecidas (permite update automático) — concedida em **Configurações → Aplicativos → [app usado para abrir o APK] → Instalar apps desconhecidos**
 
 ## Instalação
 
