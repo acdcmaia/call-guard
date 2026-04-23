@@ -34,7 +34,10 @@ flowchart LR
 
 1. Vá em [Releases](../../releases)
 2. Faça o download do arquivo `.apk` mais recente
-3. Instale no dispositivo (pode ser necessário permitir instalação de fontes desconhecidas)
+3. Abra o arquivo no dispositivo para iniciar a instalação
+   - Se solicitado, permita a instalação de aplicativos de fontes desconhecidas para o app usado para abrir o arquivo (gerenciador de arquivos, browser, etc.)
+   - Essa permissão pode ser concedida em **Configurações → Aplicativos → [app usado] → Instalar apps desconhecidos**
+4. Após a instalação, abra o Call Guard e siga o onboarding para conceder as permissões necessárias
 
 ## Utilização
 
