@@ -88,6 +88,10 @@ Classe `Application`. Inicializa e expõe como singletons:
 - `SettingsRepository`
 - `ContactsRepository`
 
+Também instala um `UncaughtExceptionHandler` global via `installFgsRecoveryHandler()`. Se a exceção for `ForegroundServiceDidNotStartInTimeException` (crash silencioso causado pelo MIUI — ver § Decisões de arquitetura), o app agenda um reinício automático e encerra o processo. Outras exceções são delegadas ao handler original.
+
+A extensão `Context.callGuardApp` permite que qualquer componente acesse o `CallGuardApp` sem cast explícito.
+
 ### `MainActivity`
 - Verifica se o app possui o `ROLE_CALL_SCREENING` do Android
 - Se não tiver, exibe tela pedindo permissão via `RoleManager`
@@ -129,6 +133,16 @@ O `PendingIntent` da notificação aponta para `MainActivity` via `PendingIntent
 
 Ao iniciar (via `onStartCommand`), executa uma única vez a poda de chamadas com mais de 30 dias e ajusta o `seenBlockedCount` para que não ultrapasse o novo total pós-poda.
 
+### `BootReceiver`
+`BroadcastReceiver` que escuta `ACTION_BOOT_COMPLETED` e inicia o `CallGuardForegroundService` após reinicialização do dispositivo. Registrado com `android:exported="false"`.
+
+Contém uma guarda de uptime: se `SystemClock.elapsedRealtime() > 5 min` ao receber o broadcast, o evento é ignorado — isso bloqueia o falso `BOOT_COMPLETED` que o processo de backup do MIUI dispara durante instalação/restauração.
+
+### `AutoStartHelper`
+Objeto singleton que mapeia fabricantes para as intents de configuração de início automático do respectivo gerenciador de sistema (Xiaomi, Samsung, Huawei, Honor, OPPO, Realme, Vivo, OnePlus, Asus, Meizu, Nokia). Métodos:
+- `canOpen(context)` — retorna `true` se o dispositivo tem uma intent de início automático resolvível
+- `open(context)` — abre a tela de configuração do fabricante; retorna `false` se não disponível ou se a activity lançar exceção
+
 ### `MarkSeenReceiver`
 `BroadcastReceiver` com `android:exported="false"`. Mantido no manifesto mas atualmente sem uso ativo — a lógica de reset do contador foi movida para `MainActivity.onResume()` (ver abaixo).
 
@@ -165,6 +179,8 @@ blockReason: BlockReason?  — BLACKLIST | FIRST_CALL | null (se permitida)
 |---|---|---|---|
 | `window_seconds` | Int | 120 | Janela de tempo em segundos |
 | `seen_blocked_count` | Long | -1 | Total de bloqueadas na última vez que o app foi aberto; -1 (nunca aberto) é tratado como 0 no cálculo do delta |
+| `autostart_prompt_shown` | Boolean | false | Se o onboarding de início automático já foi exibido ao usuário |
+| `autostart_configured` | Boolean | false | Se o usuário confirmou que configurou o início automático no gerenciador do fabricante |
 
 ### `CallLogRepository`
 Agrega duas fontes para o histórico:
@@ -266,7 +282,7 @@ Bottom navigation com 3 abas:
 |---|---|---|
 | `calls` | `RecentCallsScreen` | Histórico de chamadas liberadas e bloqueadas (efetuadas não exibidas); nome do contato exibido quando disponível; bloqueadas em vermelho |
 | `blacklist` | `BlacklistScreen` | Gerenciar sequências bloqueadas; suporta adicionar, editar e remover |
-| `settings` | `SettingsScreen` | Janela de tempo; Sobre (dialog com versão/build/desenvolvedor); Verificar atualizações (checagem automática via GitHub API; ao detectar nova versão, baixa e instala o APK sem sair do app) |
+| `settings` | `SettingsScreen` | Janela de tempo; Início automático do aplicativo (destacado em vermelho quando `autostart_configured = false` e o fabricante suporta); Sobre (dialog com versão/build/desenvolvedor); Verificar atualizações (checagem automática via GitHub API; ao detectar nova versão, baixa e instala o APK sem sair do app) |
 
 ---
 
@@ -280,6 +296,7 @@ Bottom navigation com 3 abas:
 | `FOREGROUND_SERVICE` / `FOREGROUND_SERVICE_SPECIAL_USE` | Manter o serviço persistente ativo (tipo `specialUse`, subtipo `callScreening`) |
 | `POST_NOTIFICATIONS` | Notificação do `CallGuardForegroundService` |
 | `REQUEST_INSTALL_PACKAGES` | Instalar o APK baixado pelo mecanismo de auto-atualização |
+| `RECEIVE_BOOT_COMPLETED` | Receber o broadcast de reinicialização para iniciar o serviço automaticamente |
 
 O role é solicitado via `RoleManager.createRequestRoleIntent`. Cada reinstalação revoga o role e gera novo UID, apagando a base de dados Room.
 
@@ -328,6 +345,12 @@ O Material3 `TooltipDefaults` não expõe controle de posição vertical. É usa
 **`SettingsScreen` baseada em dialog**
 O campo de texto para janela de tempo foi substituído por um `ListItem` clicável que abre um `AlertDialog` com o campo e botões Cancelar/Salvar, idêntico ao padrão da Lista Negra. Elimina problemas de salvamento dependente de foco (o valor só é persistido ao confirmar o dialog).
 
+**`UncaughtExceptionHandler` para crash MIUI de FGS**
+O MIUI cria um `ServiceRecord` mesmo quando `startForegroundService()` é negado durante o processo de backup/restauração. O timer desse registro expira na próxima abertura do app, causando `ForegroundServiceDidNotStartInTimeException` — uma exceção não capturável no ponto de chamada porque ocorre no processo do Android. O `CallGuardApp` instala um `UncaughtExceptionHandler` global que intercepta especificamente esse tipo, agenda um reinício via `startActivity` e mata o processo. O resultado visível ao usuário é uma reinicialização automática do app em vez de um crash silencioso.
+
+**Guarda de uptime no `BootReceiver`**
+O MIUI dispara `BOOT_COMPLETED` para o processo de backup durante instalação/restauração, muito antes de um boot real ter ocorrido. A guarda `SystemClock.elapsedRealtime() > 5 min` descarta esse broadcast espúrio: em um boot real, o evento chega nos primeiros minutos de uptime; o broadcast falso do MIUI chega quando o sistema já está há horas em execução.
+
 ---
 
 ## Comportamento em OEMs — MIUI e Samsung
@@ -343,6 +366,8 @@ Em dispositivos Xiaomi (MIUI) e Samsung, o framework telecom **ignora o `CallScr
 **Implicação prática:** chamadas de contatos salvos na agenda nunca são bloqueadas, em qualquer dispositivo. A blacklist e a janela de tempo se aplicam apenas a números desconhecidos.
 
 **Restrição de bateria no MIUI:** pode impedir o binding do serviço para números desconhecidos — definir o app como "Sem restrições" em Configurações → Aplicativos → Call Guard → Bateria.
+
+**Falso `BOOT_COMPLETED` no MIUI:** o processo de backup do MIUI dispara `ACTION_BOOT_COMPLETED` durante instalação/restauração, causando crash se o `BootReceiver` tentar iniciar o `CallGuardForegroundService` nesse momento. O `BootReceiver` bloqueia esse caso verificando se o uptime é superior a 5 minutos antes de agir.
 
 ---
 
