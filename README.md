@@ -23,9 +23,12 @@ flowchart LR
 ## Requisitos
 
 - Android 10 (API 29) ou superior
-- Permissão de triagem de chamadas (`ROLE_CALL_SCREENING`)
-- Permissão de leitura de contatos (`READ_CONTACTS`) — solicitada na primeira execução
-- Permissão de leitura do histórico de chamadas (`READ_CALL_LOG`) — solicitada na primeira visita à aba Chamadas
+- As permissões abaixo são solicitadas no onboarding, na primeira execução:
+  - Triagem de chamadas (`ROLE_CALL_SCREENING`)
+  - Leitura de contatos (`READ_CONTACTS`)
+  - Leitura do histórico de chamadas (`READ_CALL_LOG`)
+  - Notificações (`POST_NOTIFICATIONS`) — Android 13 ou superior
+  - Isenção de otimização de bateria (`REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`)
 
 ## Instalação
 
@@ -54,6 +57,17 @@ O app mantém uma notificação ativa enquanto o serviço de triagem estiver em 
 
 Ao abrir o app, o contador é zerado e a notificação volta ao estado verde.
 
+### Início automático
+O app inicia automaticamente após a reinicialização do dispositivo. Em fabricantes com restrição de início automático (Xiaomi, Samsung, Huawei e outros), uma tela de configuração é exibida na primeira execução com atalho direto para as configurações do fabricante.
+
+O status do início automático também pode ser verificado em **Configurações → Início automático do aplicativo**, destacado em vermelho enquanto não estiver configurado.
+
+### Atualizações
+Em **Configurações → Verificar atualizações**, o app consulta automaticamente a disponibilidade de uma nova versão. Ao detectar, baixa e instala o APK diretamente sem sair do app.
+
+### Sobre
+Em **Configurações → Sobre**, são exibidos a versão, a data de build e o desenvolvedor.
+
 ## Compilação do projeto
 
 **Pré-requisitos:**
@@ -73,6 +87,8 @@ Ao abrir o app, o contador é zerado e a notificação volta ao estado verde.
 **MIUI (Xiaomi) e Samsung:** o sistema ignora o serviço de triagem para números salvos nos contatos, aprovando-os automaticamente antes mesmo de consultar o app. O comportamento final é o mesmo — contatos sempre são permitidos.
 
 **Restrição de bateria no MIUI:** pode impedir o funcionamento do serviço. Definir o app como "Sem restrições" em Configurações → Aplicativos → Call Guard → Bateria.
+
+**Início automático em MIUI, Samsung, Huawei e outros:** alguns fabricantes bloqueiam o início automático de aplicativos após reinicialização. O app exibe uma tela de configuração na primeira execução com atalho para as configurações do fabricante. Sem essa configuração, o serviço de triagem não inicia automaticamente após reiniciar o dispositivo.
 
 ## Licença
 
