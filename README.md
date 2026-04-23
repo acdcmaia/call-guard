@@ -23,13 +23,13 @@ flowchart LR
 ## Requisitos
 
 - Android 10 (API 29) ou superior
-- Permissão para instalar aplicativos de fontes desconhecidas — concedida em **Configurações → Aplicativos → [app usado para abrir o APK] → Instalar apps desconhecidos**
 - As permissões abaixo são solicitadas no onboarding, na primeira execução:
   - Triagem de chamadas (`ROLE_CALL_SCREENING`)
   - Leitura de contatos (`READ_CONTACTS`)
   - Leitura do histórico de chamadas (`READ_CALL_LOG`)
   - Notificações (`POST_NOTIFICATIONS`) — Android 13 ou superior
   - Isenção de otimização de bateria (`REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`)
+- Permissão para instalar aplicativos de fontes desconhecidas — concedida em **Configurações → Aplicativos → [app usado para abrir o APK] → Instalar apps desconhecidos**
 
 ## Instalação
 
