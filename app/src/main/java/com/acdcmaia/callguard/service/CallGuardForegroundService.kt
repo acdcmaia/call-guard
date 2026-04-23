@@ -162,6 +162,10 @@ class CallGuardForegroundService : Service() {
         private const val NOTIFICATION_ID = 1
 
         fun start(context: Context) {
+            context.startService(Intent(context, CallGuardForegroundService::class.java))
+        }
+
+        fun startFromBackground(context: Context) {
             context.startForegroundService(Intent(context, CallGuardForegroundService::class.java))
         }
 
