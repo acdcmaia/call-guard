@@ -53,6 +53,7 @@ class MainActivity : ComponentActivity() {
                 val hasRole by vm.hasRole.collectAsStateWithLifecycle()
                 val isBatteryUnrestricted by vm.isBatteryUnrestricted.collectAsStateWithLifecycle()
                 val hasPermissions by vm.hasPermissions.collectAsStateWithLifecycle()
+                val needsAutostartPrompt by vm.needsAutostartPrompt.collectAsStateWithLifecycle()
 
                 when {
                     !hasRole -> SetupStep(
@@ -71,6 +72,13 @@ class MainActivity : ComponentActivity() {
                         onAction = { requestBatteryOptimization() },
                         secondaryButtonLabel = "Já configurei",
                         onSecondaryAction = { vm.checkBatteryOptimization() }
+                    )
+                    needsAutostartPrompt -> SetupStep(
+                        message = "Para iniciar automaticamente após reinicialização, o Call Guard precisa ter o início automático habilitado nas configurações do seu aparelho.",
+                        buttonLabel = "Abrir configurações",
+                        onAction = { AutoStartHelper.open(this@MainActivity); vm.markAutostartConfigured() },
+                        secondaryButtonLabel = "Pular",
+                        onSecondaryAction = { vm.skipAutostart() }
                     )
                     else -> CallGuardNavigation(
                         navigateTo = navigateTo,

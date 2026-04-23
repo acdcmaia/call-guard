@@ -68,6 +68,7 @@ private fun CallHistoryRow(item: CallHistoryItem) {
         CallLog.Calls.INCOMING_TYPE -> "Liberada"
         CallLog.Calls.OUTGOING_TYPE -> "Efetuada"
         CallLog.Calls.MISSED_TYPE -> "Perdida"
+        CallLog.Calls.BLOCKED_TYPE -> "Bloqueada"
         else -> "Liberada"
     }
 
@@ -77,7 +78,7 @@ private fun CallHistoryRow(item: CallHistoryItem) {
         null -> typeLabel
     }
 
-    val isBlocked = item.blockReason != null
+    val isBlocked = item.blockReason != null || item.callType == CallLog.Calls.BLOCKED_TYPE
     val textColor = if (isBlocked) Color.Red else Color.Unspecified
 
     ListItem(
