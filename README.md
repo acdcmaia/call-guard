@@ -59,6 +59,8 @@ O app mantém uma notificação ativa enquanto o serviço de triagem estiver em 
 
 Ao abrir o app, o contador é zerado e a notificação volta ao estado verde.
 
+A notificação é restaurada automaticamente após o dispositivo sair do modo de economia de bateria.
+
 ### Início automático
 O app inicia automaticamente após a reinicialização do dispositivo. Em fabricantes com restrição de início automático (Xiaomi, Samsung, Huawei e outros), uma tela de configuração é exibida na primeira execução com atalho direto para as configurações do fabricante.
 
