@@ -8,6 +8,9 @@ Aplicativo Android de triagem de chamadas. Bloqueia automaticamente chamadas de 
 
 ## Histórico de versões
 
+### v0.1.6 (2026-04-24)
+- **fix:** ícone de status e notificação desapareciam ao entrar no modo de economia de bateria e não voltavam ao sair — `PowerSaveReceiver` ouve `ACTION_POWER_SAVE_MODE_CHANGED` e chama `startForegroundService` ao sair do modo de economia; `onStartCommand` agora re-chama `startForeground` com o último contador cacheado em `lastBlockedCount`; `MainActivity.onResume()` também chama `start()` como fallback para quando o usuário abre o app manualmente
+
 ### v0.1.5 (2026-04-23)
 - **feat:** início automático após reinicialização do dispositivo (`BootReceiver` + `RECEIVE_BOOT_COMPLETED`)
 - **feat:** tela de onboarding para configuração de início automático em fabricantes com restrição (Xiaomi, Samsung, Huawei, Honor, OPPO, Realme, Vivo, OnePlus, Asus, Meizu, Nokia); atalho direto para as configurações do fabricante via `AutoStartHelper`
@@ -68,7 +71,8 @@ call-guard/
 │       │   ├── CallGuardScreeningService.kt  # Triagem de chamadas
 │       │   ├── CallGuardForegroundService.kt # Notificação persistente dinâmica
 │       │   ├── BootReceiver.kt               # Inicia o serviço após reinicialização do dispositivo
-│       │   └── MarkSeenReceiver.kt           # Receptor de broadcast para marcar notificação como vista
+│       │   ├── MarkSeenReceiver.kt           # Receptor de broadcast para marcar notificação como vista
+│       │   └── PowerSaveReceiver.kt          # Reinicia o serviço ao sair do modo de economia de bateria
 │       └── ui/
 │           ├── Navigation.kt        # Bottom navigation (3 abas)
 │           ├── calls/               # Histórico de chamadas
@@ -96,7 +100,7 @@ A extensão `Context.callGuardApp` permite que qualquer componente acesse o `Cal
 - Verifica se o app possui o `ROLE_CALL_SCREENING` do Android
 - Se não tiver, exibe tela pedindo permissão via `RoleManager`
 - Se tiver, inicia o `CallGuardForegroundService`
-- Em `onResume()`, zera o contador da notificação: lê o total atual de bloqueadas e salva em `seenBlockedCount`, fazendo o delta voltar a zero e a notificação ficar verde
+- Em `onResume()`, zera o contador da notificação (lê o total atual de bloqueadas e salva em `seenBlockedCount`) e chama `CallGuardForegroundService.start()` para restaurar a notificação caso ela tenha sido suprimida pelo modo de economia de bateria enquanto o serviço continuava em execução
 
 ### `CallGuardScreeningService`
 Implementa `CallScreeningService` do Android. É vinculado pelo framework telecom a cada chamada recebida.
@@ -131,12 +135,17 @@ O `PendingIntent` da notificação aponta para `MainActivity` via `PendingIntent
 - `callguard_blocked` (`setShowBadge(true)`) — usado quando há bloqueios não vistos
 - `callguard_idle` (`setShowBadge(false)`) — usado no estado normal; suprime o badge mesmo com notificação ongoing
 
+Mantém `lastBlockedCount` como campo de instância para cachear o último delta emitido. Em `onStartCommand`, re-chama `startForeground` com esse valor cacheado — isso restaura a notificação caso ela tenha sido removida pelo modo de economia de bateria sem reiniciar o serviço.
+
 Ao iniciar (via `onStartCommand`), executa uma única vez a poda de chamadas com mais de 30 dias e ajusta o `seenBlockedCount` para que não ultrapasse o novo total pós-poda.
 
 ### `BootReceiver`
 `BroadcastReceiver` que escuta `ACTION_BOOT_COMPLETED` e inicia o `CallGuardForegroundService` após reinicialização do dispositivo. Registrado com `android:exported="false"`.
 
 Contém uma guarda de uptime: se `SystemClock.elapsedRealtime() > 5 min` ao receber o broadcast, o evento é ignorado — isso bloqueia o falso `BOOT_COMPLETED` que o processo de backup do MIUI dispara durante instalação/restauração.
+
+### `PowerSaveReceiver`
+`BroadcastReceiver` que escuta `PowerManager.ACTION_POWER_SAVE_MODE_CHANGED`. Quando o modo de economia de bateria desliga (`isPowerSaveMode == false`), chama `CallGuardForegroundService.startFromBackground()` para garantir que o serviço re-poste sua notificação. Registrado com `android:exported="false"`.
 
 ### `AutoStartHelper`
 Objeto singleton que mapeia fabricantes para as intents de configuração de início automático do respectivo gerenciador de sistema (Xiaomi, Samsung, Huawei, Honor, OPPO, Realme, Vivo, OnePlus, Asus, Meizu, Nokia). Métodos:

@@ -18,6 +18,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
+import com.acdcmaia.callguard.service.CallGuardForegroundService
 import com.acdcmaia.callguard.ui.CallGuardNavigation
 import com.acdcmaia.callguard.ui.theme.CallGuardTheme
 import kotlinx.coroutines.Dispatchers
@@ -101,6 +102,7 @@ class MainActivity : ComponentActivity() {
         vm.checkRole()
         vm.checkBatteryOptimization()
         vm.checkPermissions()
+        CallGuardForegroundService.start(this)
         lifecycleScope.launch(Dispatchers.IO) {
             val total = callGuardApp.callRepository.countBlockedOnce()
             callGuardApp.settingsRepository.setSeenBlockedCount(total)
