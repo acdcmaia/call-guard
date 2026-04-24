@@ -28,6 +28,7 @@ class CallGuardForegroundService : Service() {
 
     private val serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private var pruned = false
+    private var lastBlockedCount = 0L
 
     private val app: CallGuardApp
         get() = application as? CallGuardApp
@@ -52,6 +53,8 @@ class CallGuardForegroundService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        // Re-anexa a notificação caso ela tenha sido removida pelo modo de economia de bateria
+        startForeground(NOTIFICATION_ID, buildNotification(lastBlockedCount))
         if (!pruned) {
             pruned = true
             pruneOldCalls()
@@ -70,6 +73,7 @@ class CallGuardForegroundService : Service() {
                 .distinctUntilChanged()
                 .debounce(500L)
                 .collect { newCount ->
+                    lastBlockedCount = newCount
                     updateNotification(newCount)
                 }
         }

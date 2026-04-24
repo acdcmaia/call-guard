@@ -69,6 +69,14 @@
             </intent-filter>
         </receiver>
 
+        <receiver
+            android:name=".service.PowerSaveReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.os.action.POWER_SAVE_MODE_CHANGED" />
+            </intent-filter>
+        </receiver>
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="com.acdcmaia.callguard.fileprovider"
