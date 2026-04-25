@@ -8,6 +8,14 @@ Aplicativo Android de triagem de chamadas. Bloqueia automaticamente chamadas de 
 
 ## Histórico de versões
 
+### v0.1.7 (2026-04-25)
+- **fix (ultra economia MIUI):** `PowerSaveReceiver` agora escuta também `miui.intent.action.POWER_SAVE_MODE_CHANGED` (broadcast proprietário do MIUI) e `ACTION_DEVICE_IDLE_MODE_CHANGED` (saída do Doze); no Android 12+ usa `JobScheduler` expedited via `ServiceRestartJob` para contornar o bloqueio de `startForegroundService` em background
+- **fix (ultra economia):** `CallGuardForegroundService` registra receiver dinâmico para `ACTION_SCREEN_ON` em `onCreate` — re-posta notificação quando a tela acende com processo congelado (notificação removida pelo SO sem matar o serviço)
+- **fix (ultra economia):** `CallGuardScreeningService` chama `startFromBackground` ao final de cada chamada triada — usa a execução garantida pelo framework de telefonia como gatilho para restaurar ícone e notificação quando o FGS foi morto pelo ultra modo
+- **fix:** `CallGuardForegroundService.onCreate` lê count real do DB/DataStore via `runBlocking` antes do primeiro `startForeground` — elimina "pisca verde" transitório ao reiniciar o serviço após processo morto
+- **fix:** `setSeenBlockedCount` movido de `MainActivity.onResume` para `onPause` — contador de chamadas bloqueadas não é zerado ao abrir o app, só ao sair; preserva o estado da notificação ao retornar do ultra modo e abrir o app
+- **chore:** `build.gradle.kts` release usa `releaseConfig` (keystore `callguard.jks`) em vez do keystore debug — elimina conflito de assinatura ao instalar via Android Studio sobre APK publicado no GitHub
+
 ### v0.1.6 (2026-04-24)
 - **fix:** ícone de status e notificação desapareciam ao entrar no modo de economia de bateria e não voltavam ao sair — `PowerSaveReceiver` ouve `ACTION_POWER_SAVE_MODE_CHANGED` e chama `startForegroundService` ao sair do modo de economia; `onStartCommand` agora re-chama `startForeground` com o último contador cacheado em `lastBlockedCount`; `MainActivity.onResume()` também chama `start()` como fallback para quando o usuário abre o app manualmente
 
@@ -72,7 +80,8 @@ call-guard/
 │       │   ├── CallGuardForegroundService.kt # Notificação persistente dinâmica
 │       │   ├── BootReceiver.kt               # Inicia o serviço após reinicialização do dispositivo
 │       │   ├── MarkSeenReceiver.kt           # Receptor de broadcast para marcar notificação como vista
-│       │   └── PowerSaveReceiver.kt          # Reinicia o serviço ao sair do modo de economia de bateria
+│       │   ├── PowerSaveReceiver.kt          # Reinicia o serviço ao sair dos modos de economia de bateria
+│       │   └── ServiceRestartJob.kt          # JobService expedited para reinício do FGS no Android 12+
 │       └── ui/
 │           ├── Navigation.kt        # Bottom navigation (3 abas)
 │           ├── calls/               # Histórico de chamadas
@@ -100,7 +109,8 @@ A extensão `Context.callGuardApp` permite que qualquer componente acesse o `Cal
 - Verifica se o app possui o `ROLE_CALL_SCREENING` do Android
 - Se não tiver, exibe tela pedindo permissão via `RoleManager`
 - Se tiver, inicia o `CallGuardForegroundService`
-- Em `onResume()`, zera o contador da notificação (lê o total atual de bloqueadas e salva em `seenBlockedCount`) e chama `CallGuardForegroundService.start()` para restaurar a notificação caso ela tenha sido suprimida pelo modo de economia de bateria enquanto o serviço continuava em execução
+- Em `onResume()`, chama `CallGuardForegroundService.start()` para restaurar a notificação caso ela tenha sido suprimida pelo modo de economia de bateria
+- Em `onPause()`, zera o contador da notificação (lê o total atual de bloqueadas e salva em `seenBlockedCount`) — o contador só é zerado quando o usuário sai do app, preservando o estado correto da notificação enquanto o app está em primeiro plano
 
 ### `CallGuardScreeningService`
 Implementa `CallScreeningService` do Android. É vinculado pelo framework telecom a cada chamada recebida.
@@ -109,6 +119,7 @@ Implementa `CallScreeningService` do Android. É vinculado pelo framework teleco
 - Se o número estiver na agenda, permite imediatamente (espelhando o comportamento das OEMs)
 - Sempre chama `respondToCall()`, inclusive em caso de exceção (fallback: permitir)
 - Usa `setDisallowCall(true)` + `setRejectCall(true)` para bloquear: o chamador recebe sinal de ocupado imediatamente
+- Ao final de cada chamada triada (bloqueada ou permitida), chama `CallGuardForegroundService.startFromBackground()` — usa a execução garantida pelo framework de telefonia como gatilho de recuperação quando o FGS foi morto pelo ultra modo de bateria
 
 ### `ContactsRepository`
 Consulta `ContactsContract.CommonDataKinds.Phone` para verificar se um número pertence à agenda e obter o nome do contato. O cache é um `Map<String, String>` (dígitos → nome de exibição), invalidado via `ContentObserver` quando os contatos do dispositivo mudam. A comparação usa os últimos 8 dígitos para tolerar diferenças de código de país e formatação. O `ContentObserver` não é desregistrado intencionalmente — `ContactsRepository` é singleton de processo em `CallGuardApp`.
@@ -135,6 +146,10 @@ O `PendingIntent` da notificação aponta para `MainActivity` via `PendingIntent
 - `callguard_blocked` (`setShowBadge(true)`) — usado quando há bloqueios não vistos
 - `callguard_idle` (`setShowBadge(false)`) — usado no estado normal; suprime o badge mesmo com notificação ongoing
 
+Em `onCreate`, lê o count correto do DB e do DataStore via `runBlocking(Dispatchers.IO)` antes do primeiro `startForeground` — garante que a notificação já apareça com o estado correto (vermelho com contagem) ao reiniciar após processo morto, sem "pisca verde" transitório.
+
+Registra dinamicamente um `BroadcastReceiver` para `ACTION_SCREEN_ON` em `onCreate` (desregistrado em `onDestroy`). Quando a tela acende após o ultra modo de bateria ter congelado o processo (sem matar o serviço), o receiver re-posta a notificação com `lastBlockedCount`.
+
 Mantém `lastBlockedCount` como campo de instância para cachear o último delta emitido. Em `onStartCommand`, re-chama `startForeground` com esse valor cacheado — isso restaura a notificação caso ela tenha sido removida pelo modo de economia de bateria sem reiniciar o serviço.
 
 Ao iniciar (via `onStartCommand`), executa uma única vez a poda de chamadas com mais de 30 dias e ajusta o `seenBlockedCount` para que não ultrapasse o novo total pós-poda.
@@ -145,7 +160,18 @@ Ao iniciar (via `onStartCommand`), executa uma única vez a poda de chamadas com
 Contém uma guarda de uptime: se `SystemClock.elapsedRealtime() > 5 min` ao receber o broadcast, o evento é ignorado — isso bloqueia o falso `BOOT_COMPLETED` que o processo de backup do MIUI dispara durante instalação/restauração.
 
 ### `PowerSaveReceiver`
-`BroadcastReceiver` que escuta `PowerManager.ACTION_POWER_SAVE_MODE_CHANGED`. Quando o modo de economia de bateria desliga (`isPowerSaveMode == false`), chama `CallGuardForegroundService.startFromBackground()` para garantir que o serviço re-poste sua notificação. Registrado com `android:exported="false"`.
+`BroadcastReceiver` registrado com `android:exported="false"` que escuta três broadcasts de mudança de modo de energia:
+
+| Broadcast | Cobre |
+|---|---|
+| `ACTION_POWER_SAVE_MODE_CHANGED` | Saída da economia de bateria padrão do Android |
+| `ACTION_DEVICE_IDLE_MODE_CHANGED` | Saída do modo Doze |
+| `miui.intent.action.POWER_SAVE_MODE_CHANGED` | Saída do ultra modo de bateria do MIUI (broadcast proprietário; extra `miui.intent.extra.POWER_SAVE_MODE = 0` indica desativado) |
+
+No Android 12+ (`Build.VERSION_CODES.S`), não chama `startForegroundService` diretamente (pode ser bloqueado silenciosamente em contexto de receiver); em vez disso, agenda um `ServiceRestartJob` via `JobScheduler.schedule()` com `setExpedited(true)`. No Android 10/11, a chamada direta continua funcionando.
+
+### `ServiceRestartJob`
+`JobService` executado pelo `JobScheduler` no Android 12+ a pedido do `PowerSaveReceiver`. Chama `CallGuardForegroundService.startFromBackground()` em `onStartJob` e finaliza imediatamente (`jobFinished`, sem reschedule). Registrado no manifesto com `android:permission="android.permission.BIND_JOB_SERVICE"`.
 
 ### `AutoStartHelper`
 Objeto singleton que mapeia fabricantes para as intents de configuração de início automático do respectivo gerenciador de sistema (Xiaomi, Samsung, Huawei, Honor, OPPO, Realme, Vivo, OnePlus, Asus, Meizu, Nokia). Métodos:
@@ -153,7 +179,7 @@ Objeto singleton que mapeia fabricantes para as intents de configuração de in�
 - `open(context)` — abre a tela de configuração do fabricante; retorna `false` se não disponível ou se a activity lançar exceção
 
 ### `MarkSeenReceiver`
-`BroadcastReceiver` com `android:exported="false"`. Mantido no manifesto mas atualmente sem uso ativo — a lógica de reset do contador foi movida para `MainActivity.onResume()` (ver abaixo).
+`BroadcastReceiver` com `android:exported="false"`. Mantido no manifesto para uso futuro — a lógica de reset do contador está em `MainActivity.onPause()`.
 
 ---
 
@@ -261,7 +287,7 @@ flowchart LR
     D -- Sim --> E[Notificação vermelha\nN chamadas bloqueadas]
     D -- Não --> F[Notificação verde\nCall Guard ativo]
 
-    G[Usuário toca notificação] --> H[MainActivity.onResume]
+    G[Usuário sai do app] --> H[MainActivity.onPause]
     H --> I[seenBlockedCount = total atual]
     I --> C
 ```
@@ -340,8 +366,8 @@ O log do sistema só registra chamadas após o fim da ligação. Para mostrar ch
 **Contador de notificação por delta de contagem**
 O estado da notificação é determinado pela diferença entre o total acumulado de chamadas bloqueadas no Room (limitado às 100 mais recentes, consistente com o histórico visível) e o valor `seenBlockedCount` salvo no DataStore. O valor `-1` (nunca inicializado) é tratado como `0` no cálculo — `maxOf(0L, total - maxOf(0L, seen))` — garantindo que a primeira chamada bloqueada já apareça na notificação.
 
-**Reset do contador em `MainActivity.onResume()`**
-O `seenBlockedCount` é atualizado para o total atual de chamadas bloqueadas sempre que `MainActivity` entra em primeiro plano, independente do caminho de entrada (launcher, notificação, etc.). A notificação usa `PendingIntent.getActivity()` apontando para `MainActivity` — tentar abrir a activity a partir de um `BroadcastReceiver` em background é bloqueado pelo Android 10+ e causava falha silenciosa.
+**Reset do contador em `MainActivity.onPause()`**
+O `seenBlockedCount` é atualizado para o total atual de chamadas bloqueadas quando `MainActivity` sai do primeiro plano (usuário pressiona home, back ou muda de app). Isso garante que a notificação exiba o estado correto ao retornar do ultra modo ou ao abrir o app: o ícone vermelho com a contagem correta permanece visível enquanto o usuário está no app e é zerado somente ao sair. A notificação usa `PendingIntent.getActivity()` apontando para `MainActivity` — tentar abrir a activity a partir de um `BroadcastReceiver` em background é bloqueado pelo Android 10+ e causava falha silenciosa.
 
 **`foregroundServiceType="specialUse"`**
 O tipo `dataSync` tem janela de execução máxima de 6 horas no Android 14+ (API 34). O tipo `specialUse` com subtipo declarado `callScreening` não tem essa limitação e reflete com precisão o propósito do serviço.

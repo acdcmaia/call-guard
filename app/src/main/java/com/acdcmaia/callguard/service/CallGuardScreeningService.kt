@@ -56,6 +56,11 @@ class CallGuardScreeningService : CallScreeningService() {
                 Log.e(TAG, "Error screening call, allowing as fallback", e)
                 respondToCall(callDetails, CallResponse.Builder().build())
             }
+            // Garante que o FGS está ativo após processar a chamada.
+            // Cobre o cenário em que o ultra modo de bateria matou o serviço de notificação:
+            // o telecom acorda este serviço mesmo assim, e usamos essa execução para restaurar
+            // o ícone e a contagem correta de chamadas bloqueadas.
+            CallGuardForegroundService.startFromBackground(this@CallGuardScreeningService)
         }
     }
 

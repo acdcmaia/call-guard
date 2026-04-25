@@ -10,6 +10,14 @@ plugins {
 val buildDate: String = SimpleDateFormat("yyMMdd.HHmm").format(Date())
 
 android {
+    signingConfigs {
+        create("releaseConfig") {
+            storeFile = file("C:\\Users\\maia\\callguard.jks")
+            storePassword = "callguard123!"
+            keyAlias = "callguard"
+            keyPassword = "callguard123!"
+        }
+    }
     namespace = "com.acdcmaia.callguard"
     compileSdk {
         version = release(36) {
@@ -21,8 +29,8 @@ android {
         applicationId = "com.acdcmaia.callguard"
         minSdk = 29
         targetSdk = 36
-        versionCode = 5
-        versionName = "0.1.6"
+        versionCode = 6
+        versionName = "0.1.7"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField("String", "BUILD_DATE", "\"$buildDate\"")
@@ -38,6 +46,7 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            signingConfig = signingConfigs.getByName("releaseConfig")
         }
     }
     compileOptions {
