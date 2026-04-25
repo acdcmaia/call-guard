@@ -69,18 +69,19 @@ tasks.whenTaskAdded {
     if (name.startsWith("assemble") && (name.endsWith("Debug") || name.endsWith("Release"))) {
         doLast {
             val variant = name.removePrefix("assemble").lowercase()
-            listOf(
-                layout.buildDirectory.dir("outputs/apk/$variant").get().asFile,
-                File(projectDir, "release")
-            ).forEach { apkDir ->
-                apkDir.listFiles()
-                    ?.filter { it.name.startsWith("app-") && it.name.contains(variant) && it.extension == "apk" }
-                    ?.forEach { apk ->
-                        apk.copyTo(
-                            File(apk.parent, "CallGuard-v${android.defaultConfig.versionName}-b$buildDate.$variant.apk"),
-                            overwrite = true
-                        )
-                    }
+            val named = "CallGuard-v${android.defaultConfig.versionName}-b$buildDate.$variant.apk"
+            val buildApkDir = layout.buildDirectory.dir("outputs/apk/$variant").get().asFile
+            val releaseDir = File(projectDir, "release")
+
+            // Procura o APK nas duas localizações possíveis
+            val apk = listOf(buildApkDir, releaseDir)
+                .flatMap { it.listFiles()?.toList() ?: emptyList() }
+                .firstOrNull { it.name.startsWith("app-") && it.name.contains(variant) && it.extension == "apk" }
+
+            if (apk != null) {
+                // Copia sempre para app/release/ (destino canônico para deploy)
+                releaseDir.mkdirs()
+                apk.copyTo(File(releaseDir, named), overwrite = true)
             }
         }
     }
