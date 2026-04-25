@@ -57,9 +57,9 @@ O app mantém uma notificação ativa enquanto o serviço de triagem estiver em 
 - **Fundo verde / ícone de escudo:** sem novos bloqueios desde a última abertura do app
 - **Fundo vermelho / ícone de escudo com !:** indica quantas chamadas foram bloqueadas desde a última abertura do app
 
-Ao abrir o app, o contador é zerado e a notificação volta ao estado verde.
+Ao sair do app, o contador é zerado e a notificação volta ao estado verde.
 
-A notificação é restaurada automaticamente após o dispositivo sair do modo de economia de bateria.
+A notificação é restaurada automaticamente quando uma chamada chega após o dispositivo sair do modo de economia de bateria.
 
 ### Início automático
 O app inicia automaticamente após a reinicialização do dispositivo. Em fabricantes com restrição de início automático (Xiaomi, Samsung, Huawei e outros), uma tela de configuração é exibida na primeira execução com atalho direto para as configurações do fabricante.
@@ -91,6 +91,8 @@ Em **Configurações → Sobre**, são exibidos a versão, a data de build e o d
 **MIUI (Xiaomi) e Samsung:** o sistema ignora o serviço de triagem para números salvos nos contatos, aprovando-os automaticamente antes mesmo de consultar o app. O comportamento final é o mesmo — contatos sempre são permitidos.
 
 **Restrição de bateria no MIUI:** pode impedir o funcionamento do serviço. Definir o app como "Sem restrições" em Configurações → Aplicativos → Call Guard → Bateria.
+
+**Ultra economia de bateria (MIUI e outros):** o modo ultra mata o serviço de notificação. O ícone e as mensagens são restaurados automaticamente na próxima chamada recebida, sem necessidade de abrir o app.
 
 **Início automático em MIUI, Samsung, Huawei e outros:** alguns fabricantes bloqueiam o início automático de aplicativos após reinicialização. O app exibe uma tela de configuração na primeira execução com atalho para as configurações do fabricante. Sem essa configuração, o serviço de triagem não inicia automaticamente após reiniciar o dispositivo.
 

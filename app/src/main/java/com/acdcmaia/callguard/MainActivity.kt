@@ -103,6 +103,10 @@ class MainActivity : ComponentActivity() {
         vm.checkBatteryOptimization()
         vm.checkPermissions()
         CallGuardForegroundService.start(this)
+    }
+
+    override fun onPause() {
+        super.onPause()
         lifecycleScope.launch(Dispatchers.IO) {
             val total = callGuardApp.callRepository.countBlockedOnce()
             callGuardApp.settingsRepository.setSeenBlockedCount(total)

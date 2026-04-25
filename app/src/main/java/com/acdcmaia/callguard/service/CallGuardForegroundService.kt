@@ -5,8 +5,10 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.graphics.Color
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
@@ -14,14 +16,15 @@ import com.acdcmaia.callguard.CallGuardApp
 import com.acdcmaia.callguard.R
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
-import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 
 @OptIn(FlowPreview::class)
 class CallGuardForegroundService : Service() {
@@ -29,6 +32,14 @@ class CallGuardForegroundService : Service() {
     private val serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private var pruned = false
     private var lastBlockedCount = 0L
+
+    // Re-posta a notificação quando a tela acende após ultra economia de bateria (processo congelado,
+    // notificação removida pelo SO — onStartCommand não é chamado porque o serviço não foi morto)
+    private val screenOnReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            startForeground(NOTIFICATION_ID, buildNotification(lastBlockedCount))
+        }
+    }
 
     private val app: CallGuardApp
         get() = application as? CallGuardApp
@@ -48,8 +59,14 @@ class CallGuardForegroundService : Service() {
     override fun onCreate() {
         super.onCreate()
         createNotificationChannels()
-        startForeground(NOTIFICATION_ID, buildNotification(0L))
+        lastBlockedCount = runBlocking(Dispatchers.IO) {
+            val total = app.callRepository.countBlockedOnce()
+            val seen = app.settingsRepository.seenBlockedCount.first()
+            maxOf(0L, total - maxOf(0L, seen))
+        }
+        startForeground(NOTIFICATION_ID, buildNotification(lastBlockedCount))
         observeBlockedCount()
+        registerReceiver(screenOnReceiver, IntentFilter(Intent.ACTION_SCREEN_ON))
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -133,6 +150,7 @@ class CallGuardForegroundService : Service() {
     override fun onDestroy() {
         super.onDestroy()
         serviceScope.cancel()
+        try { unregisterReceiver(screenOnReceiver) } catch (_: Exception) { }
     }
 
     override fun onBind(intent: Intent?): IBinder? = null

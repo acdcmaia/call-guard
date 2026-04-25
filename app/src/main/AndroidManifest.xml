@@ -74,8 +74,15 @@
             android:exported="false">
             <intent-filter>
                 <action android:name="android.os.action.POWER_SAVE_MODE_CHANGED" />
+                <action android:name="android.os.action.DEVICE_IDLE_MODE_CHANGED" />
+                <action android:name="miui.intent.action.POWER_SAVE_MODE_CHANGED" />
             </intent-filter>
         </receiver>
+
+        <service
+            android:name=".service.ServiceRestartJob"
+            android:exported="false"
+            android:permission="android.permission.BIND_JOB_SERVICE" />
 
         <provider
             android:name="androidx.core.content.FileProvider"
