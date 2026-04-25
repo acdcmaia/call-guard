@@ -79,9 +79,8 @@ tasks.whenTaskAdded {
                 .firstOrNull { it.name.startsWith("app-") && it.name.contains(variant) && it.extension == "apk" }
 
             if (apk != null) {
-                // Copia sempre para app/release/ (destino canônico para deploy)
-                releaseDir.mkdirs()
-                apk.copyTo(File(releaseDir, named), overwrite = true)
+                val destDir = if (variant == "release") { releaseDir.also { it.mkdirs() } } else buildApkDir
+                apk.copyTo(File(destDir, named), overwrite = true)
             }
         }
     }
