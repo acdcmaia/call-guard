@@ -1,5 +1,6 @@
 import java.text.SimpleDateFormat
 import java.util.Date
+import java.util.Properties
 
 plugins {
     alias(libs.plugins.android.application)
@@ -9,13 +10,18 @@ plugins {
 
 val buildDate: String = SimpleDateFormat("yyMMdd.HHmm").format(Date())
 
+val localProps = Properties().apply {
+    val f = rootProject.file("local.properties")
+    if (f.exists()) load(f.inputStream())
+}
+
 android {
     signingConfigs {
         create("releaseConfig") {
-            storeFile = file("C:\\Users\\maia\\Dropbox\\dev\\callguard.jks")
-            storePassword = "callguard123!"
-            keyAlias = "callguard"
-            keyPassword = "callguard123!"
+            storeFile = file(localProps.getProperty("keystore.path"))
+            storePassword = localProps.getProperty("keystore.password")
+            keyAlias = localProps.getProperty("keystore.alias")
+            keyPassword = localProps.getProperty("keystore.password")
         }
     }
     namespace = "com.acdcmaia.callguard"
