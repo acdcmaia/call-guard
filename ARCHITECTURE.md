@@ -9,7 +9,10 @@ Aplicativo Android de triagem de chamadas. Bloqueia automaticamente chamadas de 
 ## Histórico de versões
 
 ### v0.1.8 (2026-05-06)
-- **feat:** detecção de perda do `ROLE_CALL_SCREENING` — `CallGuardForegroundService` registra `roleChangedReceiver` dinamicamente em `onCreate` para escutar `RoleManager.ACTION_ROLES_CHANGED`; ao detectar que o role foi revogado (ex.: atualização silenciosa do Family Link), exibe notificação de alerta no canal `callguard_warning` (`IMPORTANCE_HIGH`) com texto "Triagem inativa. Toque para reativar." e ação que abre o `MainActivity`; a notificação é cancelada automaticamente em `onStartCommand` quando o role volta a ser mantido pelo app
+- **feat:** detecção de perda do `ROLE_CALL_SCREENING` — `CallGuardForegroundService` registra `roleChangedReceiver` dinamicamente em `onCreate` para escutar `android.app.role.action.ROLES_CHANGED`; ao detectar que o role foi revogado (ex.: atualização silenciosa do Family Link), exibe notificação de alerta no canal `callguard_warning` (`IMPORTANCE_HIGH`) com texto "Triagem inativa. Toque para reativar." e ação que abre o `MainActivity`
+- **feat:** `onStartCommand` verifica o role a cada reinício do serviço e exibe o alerta se o role não estiver presente — cobre o caso em que o broadcast foi perdido porque o processo não estava rodando no momento da revogação
+- **fix:** registro do `roleChangedReceiver` usa `Context.RECEIVER_NOT_EXPORTED` no Android 13+ (API 33+), conforme exigência de targetSdk 34+
+- **fix:** caminho do keystore corrigido para `C:\Users\maia\Dropbox\dev\callguard.jks`
 
 ### v0.1.7 (2026-04-25)
 - **fix (ultra economia MIUI):** `PowerSaveReceiver` agora escuta também `miui.intent.action.POWER_SAVE_MODE_CHANGED` (broadcast proprietário do MIUI) e `ACTION_DEVICE_IDLE_MODE_CHANGED` (saída do Doze); no Android 12+ usa `JobScheduler` expedited via `ServiceRestartJob` para contornar o bloqueio de `startForegroundService` em background

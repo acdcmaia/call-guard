@@ -97,6 +97,7 @@ class CallGuardForegroundService : Service() {
         startForeground(NOTIFICATION_ID, buildNotification(lastBlockedCount))
         val rm = getSystemService(RoleManager::class.java)
         if (rm.isRoleHeld(RoleManager.ROLE_CALL_SCREENING)) cancelRoleLostNotification()
+        else showRoleLostNotification()
         if (!pruned) {
             pruned = true
             pruneOldCalls()
