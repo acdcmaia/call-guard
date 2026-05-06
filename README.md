@@ -61,6 +61,8 @@ Ao sair do app, o contador é zerado e a notificação volta ao estado verde.
 
 A notificação é restaurada automaticamente quando uma chamada chega após o dispositivo sair do modo de economia de bateria.
 
+Se o serviço de triagem for desativado pelo sistema (ex.: por um gerenciador de controle parental), uma notificação de alerta é exibida automaticamente. Toque nela para reativar a triagem.
+
 ### Início automático
 O app inicia automaticamente após a reinicialização do dispositivo. Em fabricantes com restrição de início automático (Xiaomi, Samsung, Huawei e outros), uma tela de configuração é exibida na primeira execução com atalho direto para as configurações do fabricante.
 
