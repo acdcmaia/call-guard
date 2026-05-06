@@ -6,6 +6,7 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
 import android.app.role.RoleManager
+import android.os.Build
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -80,7 +81,15 @@ class CallGuardForegroundService : Service() {
         startForeground(NOTIFICATION_ID, buildNotification(lastBlockedCount))
         observeBlockedCount()
         registerReceiver(screenOnReceiver, IntentFilter(Intent.ACTION_SCREEN_ON))
-        registerReceiver(roleChangedReceiver, IntentFilter("android.app.role.action.ROLES_CHANGED"))
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(
+                roleChangedReceiver,
+                IntentFilter("android.app.role.action.ROLES_CHANGED"),
+                Context.RECEIVER_NOT_EXPORTED
+            )
+        } else {
+            registerReceiver(roleChangedReceiver, IntentFilter("android.app.role.action.ROLES_CHANGED"))
+        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
