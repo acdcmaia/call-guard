@@ -12,7 +12,7 @@ val buildDate: String = SimpleDateFormat("yyMMdd.HHmm").format(Date())
 android {
     signingConfigs {
         create("releaseConfig") {
-            storeFile = file("C:\\Users\\maia\\callguard.jks")
+            storeFile = file("C:\\Users\\maia\\Dropbox\\dev\\callguard.jks")
             storePassword = "callguard123!"
             keyAlias = "callguard"
             keyPassword = "callguard123!"
