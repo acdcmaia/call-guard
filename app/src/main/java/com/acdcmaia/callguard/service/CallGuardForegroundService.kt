@@ -5,6 +5,7 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
+import android.app.role.RoleManager
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -41,6 +42,18 @@ class CallGuardForegroundService : Service() {
         }
     }
 
+    // Detecta quando o RoleManager revoga ROLE_CALL_SCREENING (ex: atualização silenciosa do Family Link)
+    private val roleChangedReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            val rm = getSystemService(RoleManager::class.java)
+            if (rm.isRoleHeld(RoleManager.ROLE_CALL_SCREENING)) {
+                cancelRoleLostNotification()
+            } else {
+                showRoleLostNotification()
+            }
+        }
+    }
+
     private val app: CallGuardApp
         get() = application as? CallGuardApp
             ?: throw IllegalStateException("Application deve ser CallGuardApp")
@@ -67,11 +80,14 @@ class CallGuardForegroundService : Service() {
         startForeground(NOTIFICATION_ID, buildNotification(lastBlockedCount))
         observeBlockedCount()
         registerReceiver(screenOnReceiver, IntentFilter(Intent.ACTION_SCREEN_ON))
+        registerReceiver(roleChangedReceiver, IntentFilter(RoleManager.ACTION_ROLES_CHANGED))
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         // Re-anexa a notificação caso ela tenha sido removida pelo modo de economia de bateria
         startForeground(NOTIFICATION_ID, buildNotification(lastBlockedCount))
+        val rm = getSystemService(RoleManager::class.java)
+        if (rm.isRoleHeld(RoleManager.ROLE_CALL_SCREENING)) cancelRoleLostNotification()
         if (!pruned) {
             pruned = true
             pruneOldCalls()
@@ -135,6 +151,32 @@ class CallGuardForegroundService : Service() {
             .notify(NOTIFICATION_ID, buildNotification(newBlockedCount))
     }
 
+    private fun showRoleLostNotification() {
+        val pi = PendingIntent.getActivity(
+            this, 1,
+            Intent(this, com.acdcmaia.callguard.MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            },
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        )
+        getSystemService(NotificationManager::class.java).notify(
+            NOTIFICATION_WARNING_ID,
+            NotificationCompat.Builder(this, CHANNEL_WARNING)
+                .setContentTitle(getString(R.string.app_name))
+                .setContentText(getString(R.string.notification_role_lost))
+                .setSmallIcon(R.drawable.ic_notification_blocked)
+                .setColor(Color.rgb(211, 47, 47))
+                .setColorized(true)
+                .setContentIntent(pi)
+                .setAutoCancel(true)
+                .build()
+        )
+    }
+
+    private fun cancelRoleLostNotification() {
+        getSystemService(NotificationManager::class.java).cancel(NOTIFICATION_WARNING_ID)
+    }
+
     private fun pruneOldCalls() {
         val cutoff = System.currentTimeMillis() - PRUNE_WINDOW_MS
         serviceScope.launch {
@@ -151,6 +193,7 @@ class CallGuardForegroundService : Service() {
         super.onDestroy()
         serviceScope.cancel()
         try { unregisterReceiver(screenOnReceiver) } catch (_: Exception) { }
+        try { unregisterReceiver(roleChangedReceiver) } catch (_: Exception) { }
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -175,13 +218,24 @@ class CallGuardForegroundService : Service() {
             it.lockscreenVisibility = Notification.VISIBILITY_SECRET
             nm.createNotificationChannel(it)
         }
+        NotificationChannel(
+            CHANNEL_WARNING,
+            getString(R.string.notification_channel_warning),
+            NotificationManager.IMPORTANCE_HIGH
+        ).also {
+            it.setShowBadge(true)
+            it.lockscreenVisibility = Notification.VISIBILITY_PUBLIC
+            nm.createNotificationChannel(it)
+        }
     }
 
     companion object {
         private const val PRUNE_WINDOW_MS = 30L * 24 * 60 * 60 * 1_000
         private const val CHANNEL_BLOCKED = "callguard_blocked"
         private const val CHANNEL_IDLE = "callguard_idle"
+        private const val CHANNEL_WARNING = "callguard_warning"
         private const val NOTIFICATION_ID = 1
+        private const val NOTIFICATION_WARNING_ID = 2
 
         fun start(context: Context) {
             context.startService(Intent(context, CallGuardForegroundService::class.java))

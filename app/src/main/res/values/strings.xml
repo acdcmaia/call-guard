@@ -9,4 +9,6 @@
         <item quantity="one">%d chamada bloqueada</item>
         <item quantity="other">%d chamadas bloqueadas</item>
     </plurals>
+    <string name="notification_channel_warning">Call Guard — alertas</string>
+    <string name="notification_role_lost">Triagem inativa. Toque para reativar.</string>
 </resources>
