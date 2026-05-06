@@ -80,7 +80,7 @@ class CallGuardForegroundService : Service() {
         startForeground(NOTIFICATION_ID, buildNotification(lastBlockedCount))
         observeBlockedCount()
         registerReceiver(screenOnReceiver, IntentFilter(Intent.ACTION_SCREEN_ON))
-        registerReceiver(roleChangedReceiver, IntentFilter(RoleManager.ACTION_ROLES_CHANGED))
+        registerReceiver(roleChangedReceiver, IntentFilter("android.app.role.action.ROLES_CHANGED"))
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
