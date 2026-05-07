@@ -6,7 +6,6 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
 import android.app.role.RoleManager
-import android.os.Build
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -43,18 +42,6 @@ class CallGuardForegroundService : Service() {
         }
     }
 
-    // Detecta quando o RoleManager revoga ROLE_CALL_SCREENING (ex: atualização silenciosa do Family Link)
-    private val roleChangedReceiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context?, intent: Intent?) {
-            val rm = getSystemService(RoleManager::class.java)
-            if (rm.isRoleHeld(RoleManager.ROLE_CALL_SCREENING)) {
-                cancelRoleLostNotification()
-            } else {
-                showRoleLostNotification()
-            }
-        }
-    }
-
     private val app: CallGuardApp
         get() = application as? CallGuardApp
             ?: throw IllegalStateException("Application deve ser CallGuardApp")
@@ -81,15 +68,6 @@ class CallGuardForegroundService : Service() {
         startForeground(NOTIFICATION_ID, buildNotification(lastBlockedCount))
         observeBlockedCount()
         registerReceiver(screenOnReceiver, IntentFilter(Intent.ACTION_SCREEN_ON))
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            registerReceiver(
-                roleChangedReceiver,
-                IntentFilter("android.app.role.action.ROLES_CHANGED"),
-                Context.RECEIVER_NOT_EXPORTED
-            )
-        } else {
-            registerReceiver(roleChangedReceiver, IntentFilter("android.app.role.action.ROLES_CHANGED"))
-        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -203,7 +181,6 @@ class CallGuardForegroundService : Service() {
         super.onDestroy()
         serviceScope.cancel()
         try { unregisterReceiver(screenOnReceiver) } catch (_: Exception) { }
-        try { unregisterReceiver(roleChangedReceiver) } catch (_: Exception) { }
     }
 
     override fun onBind(intent: Intent?): IBinder? = null

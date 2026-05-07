@@ -98,6 +98,8 @@ Em **Configurações → Sobre**, são exibidos a versão, a data de build e o d
 
 **Início automático em MIUI, Samsung, Huawei e outros:** alguns fabricantes bloqueiam o início automático de aplicativos após reinicialização. O app exibe uma tela de configuração na primeira execução com atalho para as configurações do fabricante. Sem essa configuração, o serviço de triagem não inicia automaticamente após reiniciar o dispositivo.
 
+**Family Link — restrição de uso:** em dispositivos supervisionados pelo Google Family Link, quando o dispositivo entra em restrição de uso (limite de tempo atingido ou horário configurado), o sistema suspende o app e revoga a autorização de triagem de chamadas. Durante esse período, chamadas são recebidas sem triagem. Esta é uma limitação do Android sem solução do lado do app.
+
 ## Licença
 
 Uso pessoal.
