@@ -9,10 +9,9 @@ Aplicativo Android de triagem de chamadas. Bloqueia automaticamente chamadas de 
 ## Histórico de versões
 
 ### v0.1.8 (2026-05-06)
-- **feat:** detecção de perda do `ROLE_CALL_SCREENING` — `CallGuardForegroundService` registra `roleChangedReceiver` dinamicamente em `onCreate` para escutar `android.app.role.action.ROLES_CHANGED`; ao detectar que o role foi revogado (ex.: atualização silenciosa do Family Link), exibe notificação de alerta no canal `callguard_warning` (`IMPORTANCE_HIGH`) com texto "Triagem inativa. Toque para reativar." e ação que abre o `MainActivity`
-- **feat:** `onStartCommand` verifica o role a cada reinício do serviço e exibe o alerta se o role não estiver presente — cobre o caso em que o broadcast foi perdido porque o processo não estava rodando no momento da revogação
-- **fix:** registro do `roleChangedReceiver` usa `Context.RECEIVER_NOT_EXPORTED` no Android 13+ (API 33+), conforme exigência de targetSdk 34+
+- **feat:** `onStartCommand` verifica o role a cada reinício do serviço e exibe notificação de alerta no canal `callguard_warning` (`IMPORTANCE_HIGH`) com texto "Triagem inativa. Toque para reativar." se o `ROLE_CALL_SCREENING` não estiver presente
 - **fix:** caminho do keystore corrigido para `C:\Users\maia\Dropbox\dev\callguard.jks`
+- **security:** credenciais do keystore migradas para `local.properties`
 
 ### v0.1.7 (2026-04-25)
 - **fix (ultra economia MIUI):** `PowerSaveReceiver` agora escuta também `miui.intent.action.POWER_SAVE_MODE_CHANGED` (broadcast proprietário do MIUI) e `ACTION_DEVICE_IDLE_MODE_CHANGED` (saída do Doze); no Android 12+ usa `JobScheduler` expedited via `ServiceRestartJob` para contornar o bloqueio de `startForegroundService` em background
@@ -154,11 +153,10 @@ O `PendingIntent` da notificação aponta para `MainActivity` via `PendingIntent
 
 Em `onCreate`, lê o count correto do DB e do DataStore via `runBlocking(Dispatchers.IO)` antes do primeiro `startForeground` — garante que a notificação já apareça com o estado correto (vermelho com contagem) ao reiniciar após processo morto, sem "pisca verde" transitório.
 
-Registra dinamicamente dois `BroadcastReceiver` em `onCreate` (ambos desregistrados em `onDestroy`):
+Registra dinamicamente um `BroadcastReceiver` em `onCreate` (desregistrado em `onDestroy`):
 - `screenOnReceiver` — escuta `ACTION_SCREEN_ON`; re-posta a notificação com `lastBlockedCount` quando a tela acende após o ultra modo de bateria ter congelado o processo (sem matar o serviço)
-- `roleChangedReceiver` — escuta `RoleManager.ACTION_ROLES_CHANGED`; ao detectar que `ROLE_CALL_SCREENING` foi revogado (ex.: atualização silenciosa do Family Link), exibe notificação de alerta no canal `callguard_warning`; ao detectar que o role foi restaurado, cancela o alerta
 
-Terceiro canal `callguard_warning` (`IMPORTANCE_HIGH`, `VISIBILITY_PUBLIC`) usado exclusivamente para o alerta de triagem inativa — aparece como heads-up e faz som para garantir que o usuário perceba a perda de proteção.
+Terceiro canal `callguard_warning` (`IMPORTANCE_HIGH`, `VISIBILITY_PUBLIC`) usado para o alerta de triagem inativa — disparado em `onStartCommand` quando `ROLE_CALL_SCREENING` não está presente; aparece como heads-up e faz som para garantir que o usuário perceba a perda de proteção.
 
 Mantém `lastBlockedCount` como campo de instância para cachear o último delta emitido. Em `onStartCommand`, re-chama `startForeground` com esse valor cacheado — isso restaura a notificação caso ela tenha sido removida pelo modo de economia de bateria sem reiniciar o serviço.
 
@@ -402,8 +400,8 @@ O campo de texto para janela de tempo foi substituído por um `ListItem` clicáv
 **`UncaughtExceptionHandler` para crash MIUI de FGS**
 O MIUI cria um `ServiceRecord` mesmo quando `startForegroundService()` é negado durante o processo de backup/restauração. O timer desse registro expira na próxima abertura do app, causando `ForegroundServiceDidNotStartInTimeException` — uma exceção não capturável no ponto de chamada porque ocorre no processo do Android. O `CallGuardApp` instala um `UncaughtExceptionHandler` global que intercepta especificamente esse tipo, agenda um reinício via `startActivity` e mata o processo. O resultado visível ao usuário é uma reinicialização automática do app em vez de um crash silencioso.
 
-**`ACTION_ROLES_CHANGED` para detecção de perda de role**
-O Family Link (pacote `com.google.android.gms.supervision`) recebe atualizações silenciosas via Play Services. Quando o componente de supervisão é atualizado e re-registra seus serviços de telecom, o Android aciona um re-check de roles via `RoleManager` — o que pode revogar o `ROLE_CALL_SCREENING` do app e apresentar ao usuário um diálogo de reconfirmação (sem envolvimento parental). Escutar `ACTION_ROLES_CHANGED` diretamente no `CallGuardForegroundService` é a forma mais imediata de detectar esse evento e notificar o usuário antes que uma chamada passe sem triagem. A detecção cobre qualquer agente que revogue o role pelo mecanismo padrão do Android; mecanismos proprietários (ex.: HyperOS) que não passam pelo `RoleManager` não disparam o broadcast — nesses casos o problema é detectado somente quando o usuário abre o app (via `MainViewModel.checkRole()` em `onResume`).
+**Detecção de perda de role**
+A perda do `ROLE_CALL_SCREENING` é detectada em `onStartCommand` a cada reinício do serviço: se o role não estiver presente, uma notificação de alerta é exibida no canal `callguard_warning`. A detecção em tempo real via receiver dinâmico (`ACTION_ROLES_CHANGED`) foi descartada — o receiver morre junto com o processo quando o app é suspenso, que é exatamente o cenário em que o role é perdido.
 
 **Guarda de uptime no `BootReceiver`**
 O MIUI dispara `BOOT_COMPLETED` para o processo de backup durante instalação/restauração, muito antes de um boot real ter ocorrido. A guarda `SystemClock.elapsedRealtime() > 5 min` descarta esse broadcast espúrio: em um boot real, o evento chega nos primeiros minutos de uptime; o broadcast falso do MIUI chega quando o sistema já está há horas em execução.
@@ -425,6 +423,8 @@ Em dispositivos Xiaomi (MIUI) e Samsung, o framework telecom **ignora o `CallScr
 **Restrição de bateria no MIUI:** pode impedir o binding do serviço para números desconhecidos — definir o app como "Sem restrições" em Configurações → Aplicativos → Call Guard → Bateria.
 
 **Falso `BOOT_COMPLETED` no MIUI:** o processo de backup do MIUI dispara `ACTION_BOOT_COMPLETED` durante instalação/restauração, causando crash se o `BootReceiver` tentar iniciar o `CallGuardForegroundService` nesse momento. O `BootReceiver` bloqueia esse caso verificando se o uptime é superior a 5 minutos antes de agir.
+
+**Family Link — perda de triagem durante restrição de uso:** quando o dispositivo supervisionado entra em restrição de uso (limite de tempo atingido ou horário de uso configurado), o Family Link suspende os apps via `DevicePolicyManager.setPackagesSuspended()`. O Android revoga automaticamente o `ROLE_CALL_SCREENING` de apps suspensos. Durante o período de restrição, chamadas são recebidas sem triagem. Não existe API pública que impeça um Device Admin de suspender um app de terceiro — esta é uma limitação arquitetural do Android sem solução do lado do app.
 
 ---
 
