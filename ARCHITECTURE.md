@@ -10,7 +10,7 @@ Aplicativo Android de triagem de chamadas. Bloqueia automaticamente chamadas de 
 
 ### v0.1.8 (2026-05-06)
 - **feat:** `onStartCommand` verifica o role a cada reinício do serviço e exibe notificação de alerta no canal `callguard_warning` (`IMPORTANCE_HIGH`) com texto "Triagem inativa. Toque para reativar." se o `ROLE_CALL_SCREENING` não estiver presente
-- **fix:** caminho do keystore corrigido para `C:\Users\maia\Dropbox\dev\callguard.jks`
+- **fix:** caminho do keystore corrigido
 - **security:** credenciais do keystore migradas para `local.properties`
 
 ### v0.1.7 (2026-04-25)
