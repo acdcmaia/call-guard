@@ -27,9 +27,9 @@ flowchart LR
   - Triagem de chamadas (`ROLE_CALL_SCREENING`)
   - Leitura de contatos (`READ_CONTACTS`)
   - Leitura do histórico de chamadas (`READ_CALL_LOG`)
-  - Notificações (`POST_NOTIFICATIONS`) — Android 13 ou superior
+  - Notificações (`POST_NOTIFICATIONS`): Android 13 ou superior
   - Isenção de otimização de bateria (`REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`)
-  - Instalação de aplicativos de fontes desconhecidas (permite update automático) — concedida em **Configurações → Aplicativos → [app usado para abrir o APK] → Instalar apps desconhecidos**
+  - Instalação de aplicativos de fontes desconhecidas (permite update automático): concedida em **Configurações → Aplicativos → [app usado para abrir o APK] → Instalar apps desconhecidos**
 
 ## Instalação
 
@@ -90,7 +90,7 @@ Em **Configurações → Sobre**, são exibidos a versão, a data de build e o d
 
 ## Limitações conhecidas
 
-**MIUI (Xiaomi) e Samsung:** o sistema ignora o serviço de triagem para números salvos nos contatos, aprovando-os automaticamente antes mesmo de consultar o app. O comportamento final é o mesmo — contatos sempre são permitidos.
+**MIUI (Xiaomi) e Samsung:** o sistema ignora o serviço de triagem para números salvos nos contatos, aprovando-os automaticamente antes mesmo de consultar o app. O comportamento final é o mesmo; contatos sempre são permitidos.
 
 **Restrição de bateria no MIUI:** pode impedir o funcionamento do serviço. Definir o app como "Sem restrições" em Configurações → Aplicativos → Call Guard → Bateria.
 
@@ -98,7 +98,7 @@ Em **Configurações → Sobre**, são exibidos a versão, a data de build e o d
 
 **Início automático em MIUI, Samsung, Huawei e outros:** alguns fabricantes bloqueiam o início automático de aplicativos após reinicialização. O app exibe uma tela de configuração na primeira execução com atalho para as configurações do fabricante. Sem essa configuração, o serviço de triagem não inicia automaticamente após reiniciar o dispositivo.
 
-**Family Link — restrição de uso:** em dispositivos supervisionados pelo Google Family Link, quando o dispositivo entra em restrição de uso (limite de tempo atingido ou horário configurado), o sistema suspende o app e revoga a autorização de triagem de chamadas. Durante esse período, chamadas são recebidas sem triagem. Esta é uma limitação do Android sem solução do lado do app.
+**Family Link: restrição de uso:** em dispositivos supervisionados pelo Google Family Link, quando o dispositivo entra em restrição de uso (limite de tempo atingido ou horário configurado), o sistema suspende o app e revoga a autorização de triagem de chamadas. Durante esse período, chamadas são recebidas sem triagem. Esta é uma limitação do Android sem solução do lado do app.
 
 ## Licença
 
