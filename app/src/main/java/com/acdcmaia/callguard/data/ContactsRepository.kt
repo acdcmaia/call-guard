@@ -9,18 +9,24 @@ import android.os.Handler
 import android.os.Looper
 import android.provider.ContactsContract
 import androidx.core.content.ContextCompat
+import com.google.i18n.phonenumbers.PhoneNumberUtil
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import java.util.concurrent.atomic.AtomicReference
 
 class ContactsRepository(private val context: Context) {
 
-    @Volatile private var cache: Map<String, String>? = null  // digits -> displayName
+    private val phoneUtil = PhoneNumberUtil.getInstance()
+    private val defaultRegion: String
+        get() = context.resources.configuration.locales.get(0).country.takeIf { it.isNotEmpty() } ?: "BR"
+
+    private val cacheRef = AtomicReference<Map<String, String>?>(null)
     private val cacheMutex = Mutex()
 
     private val contactsObserver = object : ContentObserver(Handler(Looper.getMainLooper())) {
-        override fun onChange(selfChange: Boolean) { cache = null }
+        override fun onChange(selfChange: Boolean) { cacheRef.set(null) }
     }
 
     init {
@@ -33,7 +39,7 @@ class ContactsRepository(private val context: Context) {
 
     fun registerPermission() {
         if (hasContactsPermission()) {
-            cache = null
+            cacheRef.set(null)
             registerObserver()
         }
     }
@@ -48,28 +54,37 @@ class ContactsRepository(private val context: Context) {
         )
     }
 
+    private fun toE164(raw: String): String? = try {
+        val parsed = phoneUtil.parse(raw, defaultRegion)
+        if (phoneUtil.isValidNumber(parsed))
+            phoneUtil.format(parsed, PhoneNumberUtil.PhoneNumberFormat.E164)
+        else null
+    } catch (_: Exception) { null }
+
     private suspend fun getCache(): Map<String, String> =
-        cache ?: cacheMutex.withLock { cache ?: loadCache() }
+        cacheRef.get() ?: cacheMutex.withLock { cacheRef.get() ?: loadCache() }
 
     suspend fun isContact(number: String): Boolean = withContext(Dispatchers.IO) {
+        val cache = getCache()
+        val e164 = toE164(number)
+        if (e164 != null && cache.containsKey(e164)) return@withContext true
         val digits = number.filter { it.isDigit() }
         if (digits.length < 4) return@withContext false
-        getCache().keys.any { cd ->
-            digits.endsWith(cd.takeLast(8)) || cd.endsWith(digits.takeLast(8))
-        }
+        cache.containsKey(digits)
     }
 
     suspend fun getContactName(number: String): String? = withContext(Dispatchers.IO) {
+        val cache = getCache()
+        val e164 = toE164(number)
+        if (e164 != null) cache[e164]?.let { return@withContext it }
         val digits = number.filter { it.isDigit() }
         if (digits.length < 4) return@withContext null
-        getCache().entries.firstOrNull { (cd, _) ->
-            digits.endsWith(cd.takeLast(8)) || cd.endsWith(digits.takeLast(8))
-        }?.value
+        cache[digits]
     }
 
     private suspend fun loadCache(): Map<String, String> = withContext(Dispatchers.IO) {
         if (!hasContactsPermission()) {
-            cache = emptyMap()
+            cacheRef.set(emptyMap())
             return@withContext emptyMap()
         }
         val uri = ContactsContract.CommonDataKinds.Phone.CONTENT_URI
@@ -87,13 +102,14 @@ class ContactsRepository(private val context: Context) {
                 val numIdx = cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER)
                 val nameIdx = cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME)
                 while (cursor.moveToNext()) {
-                    val cd = cursor.getString(numIdx)?.filter { it.isDigit() } ?: continue
+                    val raw = cursor.getString(numIdx) ?: continue
                     val name = cursor.getString(nameIdx) ?: continue
-                    if (cd.length >= 4) result[cd] = name
+                    val key = toE164(raw) ?: raw.filter { it.isDigit() }.takeIf { it.length >= 4 } ?: continue
+                    result[key] = name
                 }
             }
         } catch (_: Exception) {}
-        cache = result
+        cacheRef.set(result)
         result
     }
 }

@@ -8,6 +8,22 @@ Aplicativo Android de triagem de chamadas. Bloqueia automaticamente chamadas de 
 
 ## Histórico de versões
 
+### v0.1.9 (2026-05-11)
+- **feat:** `PhoneStateReceiver` — receiver estático que detecta `EXTRA_STATE_IDLE` (fim de chamada) e restaura o FGS; cobre chamadas que contornam o `CallScreeningService` (ex: bypass MIUI para contatos). Requer apenas `READ_BASIC_PHONE_STATE` (normal, auto-concedida); suporte a Android ≤12 via `READ_PHONE_STATE` removido
+- **feat:** `WatchdogWorker` — worker periódico via `WorkManager` que chama `startFromBackground()` a cada 15 minutos; agendado em `CallGuardApp.onCreate()` com política `KEEP`
+- **fix (#3):** campo `allowed: Boolean` removido de `RecentCall`; schema migrado para versão 4 via `@AutoMigration` + `@DeleteColumn`; referências em `CallGuardScreeningService` atualizadas
+- **fix (#4):** `ContactsRepository` — `@Volatile var cache` substituído por `AtomicReference<Map<String, String>?>`
+- **fix (#5):** `CallLogRepository.readSystemCallLog()` — entradas com número nulo ignoradas (antes usavam `""`); uso de `continue` no cursor
+- **fix (#9):** lógica de correspondência de contatos unificada via libphonenumber — eliminada duplicação entre `isContact()` e `getContactName()`
+- **fix (#15):** logs `Log.w` e `Log.e` desprotegidos em `CallGuardScreeningService` envolvidos em `if (BuildConfig.DEBUG)`
+- **fix (#16):** `SettingsViewModel.downloadUpdate()` valida que a URL começa com `https://github.com/acdcmaia/call-guard/` antes de iniciar o download
+- **fix (#18):** loop de polling do download envolto em `withTimeoutOrNull(10 * 60_000L)`; timeout define estado `DOWNLOAD_ERROR`
+- **fix (#19):** cursor de polling do `DownloadManager` usa `?: continue` para null e `cursor.use {}` para fechamento automático
+- **fix (#21):** `WindowSecondsDialog` — `onConfirm(secs!!)` substituído por `onConfirm(secs ?: return@TextButton)`
+- **fix (#22):** `delay(500)` no loop de polling do download aumentado para `delay(1_000)`
+- **fix (#25):** `ContactsRepository` usa `libphonenumber-android` para normalizar números para E.164; cache indexado por E.164 (ou dígitos como fallback); lookup por chave direta em vez de comparação de sufixo
+- **feat:** detecção de permissões revogadas pelo auto-reset do Android (API 30+) — `onStartCommand` verifica `READ_CONTACTS` e `READ_CALL_LOG`; se qualquer uma estiver revogada, exibe notificação de alerta no canal `callguard_warning` ("Permissões revogadas. Toque para restaurar.") com `PendingIntent` para `MainActivity`; notificação cancelada automaticamente quando as permissões são restauradas
+
 ### v0.1.8 (2026-05-06)
 - **feat:** `onStartCommand` verifica o role a cada reinício do serviço e exibe notificação de alerta no canal `callguard_warning` (`IMPORTANCE_HIGH`) com texto "Triagem inativa. Toque para reativar." se o `ROLE_CALL_SCREENING` não estiver presente
 - **fix:** caminho do keystore corrigido
@@ -86,6 +102,8 @@ call-guard/
 │       │   ├── BootReceiver.kt               # Inicia o serviço após reinicialização do dispositivo
 │       │   ├── MarkSeenReceiver.kt           # Receptor de broadcast para marcar notificação como vista
 │       │   ├── PowerSaveReceiver.kt          # Reinicia o serviço ao sair dos modos de economia de bateria
+│       │   ├── PhoneStateReceiver.kt         # Restaura o FGS ao fim de qualquer chamada (estado IDLE)
+│       │   ├── WatchdogWorker.kt             # Worker periódico que reinicia o FGS a cada 15 minutos
 │       │   └── ServiceRestartJob.kt          # JobService expedited para reinício do FGS no Android 12+
 │       └── ui/
 │           ├── Navigation.kt        # Bottom navigation (3 abas)
@@ -108,6 +126,8 @@ Classe `Application`. Inicializa e expõe como singletons:
 
 Também instala um `UncaughtExceptionHandler` global via `installFgsRecoveryHandler()`. Se a exceção for `ForegroundServiceDidNotStartInTimeException` (crash silencioso causado pelo MIUI — ver § Decisões de arquitetura), o app agenda um reinício automático e encerra o processo. Outras exceções são delegadas ao handler original.
 
+Em `onCreate`, agenda o `WatchdogWorker` via `WorkManager.enqueueUniquePeriodicWork()` com política `KEEP` — se já estiver agendado, o timer existente é preservado.
+
 A extensão `Context.callGuardApp` permite que qualquer componente acesse o `CallGuardApp` sem cast explícito.
 
 ### `MainActivity`
@@ -127,7 +147,7 @@ Implementa `CallScreeningService` do Android. É vinculado pelo framework teleco
 - Ao final de cada chamada triada (bloqueada ou permitida), chama `CallGuardForegroundService.startFromBackground()` — usa a execução garantida pelo framework de telefonia como gatilho de recuperação quando o FGS foi morto pelo ultra modo de bateria
 
 ### `ContactsRepository`
-Consulta `ContactsContract.CommonDataKinds.Phone` para verificar se um número pertence à agenda e obter o nome do contato. O cache é um `Map<String, String>` (dígitos → nome de exibição), invalidado via `ContentObserver` quando os contatos do dispositivo mudam. A comparação usa os últimos 8 dígitos para tolerar diferenças de código de país e formatação. O `ContentObserver` não é desregistrado intencionalmente — `ContactsRepository` é singleton de processo em `CallGuardApp`.
+Consulta `ContactsContract.CommonDataKinds.Phone` para verificar se um número pertence à agenda e obter o nome do contato. O cache é um `AtomicReference<Map<String, String>?>` (E.164 ou dígitos → nome de exibição), invalidado via `ContentObserver` quando os contatos do dispositivo mudam. Os números são normalizados para E.164 via `libphonenumber-android` durante o carregamento do cache (`loadCache`) e durante o lookup (`isContact`, `getContactName`); para números que não normalizam, usa dígitos como chave de fallback. O lookup é feito por acesso direto ao mapa — sem comparação de sufixo. O `ContentObserver` não é desregistrado intencionalmente — `ContactsRepository` é singleton de processo em `CallGuardApp`.
 
 O `ContentObserver` e as queries ao `ContentResolver` são guardados por verificação de `READ_CONTACTS` — se a permissão não foi concedida ainda, o `init` não registra o observer e `loadCache()` retorna mapa vazio. Após o usuário conceder a permissão, `RecentCallsScreen` chama `registerPermission()` para ativar o observer retroativamente.
 
@@ -156,7 +176,12 @@ Em `onCreate`, lê o count correto do DB e do DataStore via `runBlocking(Dispatc
 Registra dinamicamente um `BroadcastReceiver` em `onCreate` (desregistrado em `onDestroy`):
 - `screenOnReceiver` — escuta `ACTION_SCREEN_ON`; re-posta a notificação com `lastBlockedCount` quando a tela acende após o ultra modo de bateria ter congelado o processo (sem matar o serviço)
 
-Terceiro canal `callguard_warning` (`IMPORTANCE_HIGH`, `VISIBILITY_PUBLIC`) usado para o alerta de triagem inativa — disparado em `onStartCommand` quando `ROLE_CALL_SCREENING` não está presente; aparece como heads-up e faz som para garantir que o usuário perceba a perda de proteção.
+Terceiro canal `callguard_warning` (`IMPORTANCE_HIGH`, `VISIBILITY_PUBLIC`) usado para três tipos de alerta, todos disparados em `onStartCommand`:
+- **Triagem inativa** (`NOTIFICATION_WARNING_ID = 2`): quando `ROLE_CALL_SCREENING` não está presente
+- **Permissões revogadas** (`NOTIFICATION_PERMISSION_ID = 3`): quando `READ_CONTACTS` ou `READ_CALL_LOG` foram revogadas pelo auto-reset do Android (API 30+)
+- **Restrição de bateria ativa** (`NOTIFICATION_BATTERY_ID = 4`): quando a isenção de `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` foi removida manualmente pelo usuário
+
+Todas aparecem como heads-up, fazem som e são canceladas automaticamente quando a condição é resolvida. Tocar em qualquer uma abre `MainActivity`, cujo `onResume` detecta e aciona o passo de onboarding correspondente.
 
 Mantém `lastBlockedCount` como campo de instância para cachear o último delta emitido. Em `onStartCommand`, re-chama `startForeground` com esse valor cacheado — isso restaura a notificação caso ela tenha sido removida pelo modo de economia de bateria sem reiniciar o serviço.
 
@@ -177,6 +202,18 @@ Contém uma guarda de uptime: se `SystemClock.elapsedRealtime() > 5 min` ao rece
 | `miui.intent.action.POWER_SAVE_MODE_CHANGED` | Saída do ultra modo de bateria do MIUI (broadcast proprietário; extra `miui.intent.extra.POWER_SAVE_MODE = 0` indica desativado) |
 
 No Android 12+ (`Build.VERSION_CODES.S`), não chama `startForegroundService` diretamente (pode ser bloqueado silenciosamente em contexto de receiver); em vez disso, agenda um `ServiceRestartJob` via `JobScheduler.schedule()` com `setExpedited(true)`. No Android 10/11, a chamada direta continua funcionando.
+
+### `WatchdogWorker`
+`Worker` (classe base do `WorkManager` para tarefas em background) periódico agendado pelo `CallGuardApp` a cada 15 minutos (intervalo mínimo permitido pelo `WorkManager`). Em `doWork()`, chama `CallGuardForegroundService.startFromBackground()` para garantir que o FGS esteja vivo. Se o FGS já estiver ativo, o resultado é apenas um `onStartCommand()` adicional que re-posta a notificação — operação idempotente e inofensiva.
+
+O `WorkManager` inicializa automaticamente via `WorkManagerInitializer` (provedor de conteúdo interno da biblioteca, registrado automaticamente no manifesto sem necessidade de entrada manual). O agendamento usa `ExistingPeriodicWorkPolicy.KEEP` (política que preserva o trabalho já agendado, evitando que o timer seja reiniciado a cada restart do processo).
+
+### `PhoneStateReceiver`
+`BroadcastReceiver` estático que escuta `android.intent.action.PHONE_STATE`. Quando o estado da chamada transita para `EXTRA_STATE_IDLE` (chamada encerrada, atendida ou não), chama `startFromBackground()` para restaurar o `CallGuardForegroundService`. Cobre chamadas que não passam pelo `CallGuardScreeningService` — como o bypass automático do MIUI para contatos salvos na agenda.
+
+Usa o mesmo padrão do `PowerSaveReceiver`: no Android 12+ agenda `ServiceRestartJob` via `JobScheduler.setExpedited(true)`; em versões anteriores chama `startForegroundService` diretamente.
+
+Requer apenas `READ_BASIC_PHONE_STATE` (normal, concedida automaticamente na instalação). O suporte a Android ≤12 via `READ_PHONE_STATE` foi removido — nesses dispositivos o receiver não recebe o broadcast, e o `WatchdogWorker` cobre o cenário.
 
 ### `ServiceRestartJob`
 `JobService` executado pelo `JobScheduler` no Android 12+ a pedido do `PowerSaveReceiver`. Chama `CallGuardForegroundService.startFromBackground()` em `onStartJob` e finaliza imediatamente (`jobFinished`, sem reschedule). Registrado no manifesto com `android:permission="android.permission.BIND_JOB_SERVICE"`.
@@ -212,8 +249,8 @@ label: String     — descrição opcional
 id (PK, autoincrement)
 number: String
 timestamp: Long
-allowed: Boolean
 blockReason: BlockReason?  — BLACKLIST | FIRST_CALL | null (se permitida)
+matchedPattern: String?    — padrão da blacklist que correspondeu, ou null
 ```
 
 ### DataStore — `settings`
@@ -254,7 +291,7 @@ flowchart TD
     B -- Sim --> Z1([Permitir — fallback])
     B -- Não --> C[Carregar blacklist, window_seconds\ne verificar contato em paralelo]
     C --> CK{Número está\nna agenda?}
-    CK -- Sim --> ZC[Gravar RecentCall\nallowed=true]
+    CK -- Sim --> ZC[Gravar RecentCall]
     ZC --> Z5([Permitir])
     CK -- Não --> D{Dígitos do número\ncontêm algum padrão\nda blacklist?}
     D -- Sim --> E[Gravar RecentCall\nblockReason=BLACKLIST]
@@ -263,7 +300,7 @@ flowchart TD
     F --> G{Há chamadas\nrecentes?}
     G -- Não --> H[Gravar RecentCall\nblockReason=FIRST_CALL]
     H --> Z3([Rejeitar\nsetDisallowCall + setRejectCall])
-    G -- Sim --> I[Gravar RecentCall\nallowed=true]
+    G -- Sim --> I[Gravar RecentCall]
     I --> Z4([Permitir])
 ```
 
@@ -338,6 +375,7 @@ Bottom navigation com 3 abas:
 | `INTERNET` | Consultar a GitHub API e baixar APKs de atualização |
 | `FOREGROUND_SERVICE` / `FOREGROUND_SERVICE_SPECIAL_USE` | Manter o serviço persistente ativo (tipo `specialUse`, subtipo `callScreening`) |
 | `RECEIVE_BOOT_COMPLETED` | Receber o broadcast de reinicialização para iniciar o serviço automaticamente |
+| `READ_BASIC_PHONE_STATE` | Detectar fim de chamada via `PhoneStateReceiver`; concedida automaticamente na instalação (Android 13+) |
 
 **Solicitadas em runtime (exigem ação do usuário):**
 
@@ -400,8 +438,11 @@ O campo de texto para janela de tempo foi substituído por um `ListItem` clicáv
 **`UncaughtExceptionHandler` para crash MIUI de FGS**
 O MIUI cria um `ServiceRecord` mesmo quando `startForegroundService()` é negado durante o processo de backup/restauração. O timer desse registro expira na próxima abertura do app, causando `ForegroundServiceDidNotStartInTimeException` — uma exceção não capturável no ponto de chamada porque ocorre no processo do Android. O `CallGuardApp` instala um `UncaughtExceptionHandler` global que intercepta especificamente esse tipo, agenda um reinício via `startActivity` e mata o processo. O resultado visível ao usuário é uma reinicialização automática do app em vez de um crash silencioso.
 
-**Detecção de perda de role**
-A perda do `ROLE_CALL_SCREENING` é detectada em `onStartCommand` a cada reinício do serviço: se o role não estiver presente, uma notificação de alerta é exibida no canal `callguard_warning`. A detecção em tempo real via receiver dinâmico (`ACTION_ROLES_CHANGED`) foi descartada — o receiver morre junto com o processo quando o app é suspenso, que é exatamente o cenário em que o role é perdido.
+**`PhoneStateReceiver` para chamadas que contornam o screening**
+Em OEMs como MIUI, chamadas de contatos da agenda contornam o `CallScreeningService` — `onScreenCall` nunca é invocado e, com isso, `startFromBackground()` nunca é chamado ao final dessas chamadas. O `PhoneStateReceiver` detecta `EXTRA_STATE_IDLE` (fim de chamada, atendida ou não) e chama `startFromBackground()` para garantir que o FGS seja restaurado também nesses casos. O disparo é idempotente: se o FGS já estiver ativo, `onStartCommand` apenas re-posta a notificação.
+
+**Detecção de condições críticas em background**
+Quatro condições são verificadas em `onStartCommand` a cada reinício do serviço, exibindo notificação de alerta no canal `callguard_warning` quando ausentes: `ROLE_CALL_SCREENING`, `READ_CONTACTS`, `READ_CALL_LOG` e isenção de `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`. Cada alerta é cancelado automaticamente quando a condição é restaurada. Tocar em qualquer alerta abre `MainActivity`, cujo `onResume` detecta a condição faltante e exibe o passo de onboarding correspondente. A detecção em tempo real via receiver dinâmico (`ACTION_ROLES_CHANGED`) foi descartada para o role — o receiver morre junto com o processo quando o app é suspenso, que é exatamente o cenário em que o role é perdido.
 
 **Guarda de uptime no `BootReceiver`**
 O MIUI dispara `BOOT_COMPLETED` para o processo de backup durante instalação/restauração, muito antes de um boot real ter ocorrido. A guarda `SystemClock.elapsedRealtime() > 5 min` descarta esse broadcast espúrio: em um boot real, o evento chega nos primeiros minutos de uptime; o broadcast falso do MIUI chega quando o sistema já está há horas em execução.

@@ -79,8 +79,9 @@ class CallLogRepository(
                 val typeIdx = it.getColumnIndex(CallLog.Calls.TYPE)
                 var count = 0
                 while (it.moveToNext() && count < limit) {
+                    val number = it.getString(numIdx) ?: continue
                     calls.add(SystemCall(
-                        number = it.getString(numIdx) ?: "",
+                        number = number,
                         timestamp = it.getLong(dateIdx),
                         type = it.getInt(typeIdx)
                     ))

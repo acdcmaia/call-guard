@@ -42,7 +42,7 @@ class CallGuardScreeningService : CallScreeningService() {
         }
 
         val number = callDetails.handle?.schemeSpecificPart ?: run {
-            Log.w(TAG, "onScreenCall: handle null, allowing")
+            if (BuildConfig.DEBUG) Log.w(TAG, "onScreenCall: handle null, allowing")
             respondToCall(callDetails, CallResponse.Builder().build())
             return
         }
@@ -53,7 +53,7 @@ class CallGuardScreeningService : CallScreeningService() {
             try {
                 screenCall(callDetails, number)
             } catch (e: Exception) {
-                Log.e(TAG, "Error screening call, allowing as fallback", e)
+                if (BuildConfig.DEBUG) Log.e(TAG, "Error screening call, allowing as fallback", e)
                 respondToCall(callDetails, CallResponse.Builder().build())
             }
             // Garante que o FGS está ativo após processar a chamada.
@@ -86,8 +86,7 @@ class CallGuardScreeningService : CallScreeningService() {
             if (BuildConfig.DEBUG) Log.i(TAG, "ALLOW (contact)")
             repo.recordCall(RecentCall(
                 number = number,
-                timestamp = System.currentTimeMillis(),
-                allowed = true
+                timestamp = System.currentTimeMillis()
             ))
             respondToCall(callDetails, CallResponse.Builder().build())
             return
@@ -107,7 +106,6 @@ class CallGuardScreeningService : CallScreeningService() {
             repo.recordCall(RecentCall(
                 number = number,
                 timestamp = System.currentTimeMillis(),
-                allowed = false,
                 blockReason = BlockReason.BLACKLIST,
                 matchedPattern = matchedPattern.pattern
             ))
@@ -128,7 +126,6 @@ class CallGuardScreeningService : CallScreeningService() {
             repo.recordCall(RecentCall(
                 number = number,
                 timestamp = System.currentTimeMillis(),
-                allowed = false,
                 blockReason = BlockReason.FIRST_CALL
             ))
             respondToCall(callDetails, CallResponse.Builder()
@@ -139,8 +136,7 @@ class CallGuardScreeningService : CallScreeningService() {
             if (BuildConfig.DEBUG) Log.i(TAG, "ALLOW (repeat call)")
             repo.recordCall(RecentCall(
                 number = number,
-                timestamp = System.currentTimeMillis(),
-                allowed = true
+                timestamp = System.currentTimeMillis()
             ))
             respondToCall(callDetails, CallResponse.Builder().build())
         }

@@ -3,11 +3,16 @@ package com.acdcmaia.callguard
 import android.app.Application
 import android.content.Context
 import android.content.Intent
+import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.PeriodicWorkRequestBuilder
+import androidx.work.WorkManager
 import com.acdcmaia.callguard.data.CallLogRepository
 import com.acdcmaia.callguard.data.CallRepository
 import com.acdcmaia.callguard.data.ContactsRepository
 import com.acdcmaia.callguard.data.SettingsRepository
 import com.acdcmaia.callguard.data.db.AppDatabase
+import com.acdcmaia.callguard.service.WatchdogWorker
+import java.util.concurrent.TimeUnit
 
 val Context.callGuardApp: CallGuardApp
     get() = applicationContext as? CallGuardApp
@@ -23,6 +28,15 @@ class CallGuardApp : Application() {
     override fun onCreate() {
         super.onCreate()
         installFgsRecoveryHandler()
+        scheduleWatchdog()
+    }
+
+    private fun scheduleWatchdog() {
+        WorkManager.getInstance(this).enqueueUniquePeriodicWork(
+            WATCHDOG_WORK_NAME,
+            ExistingPeriodicWorkPolicy.KEEP,
+            PeriodicWorkRequestBuilder<WatchdogWorker>(15, TimeUnit.MINUTES).build()
+        )
     }
 
     // MIUI cria um ServiceRecord mesmo quando startForegroundService() é negado no processo de
@@ -38,6 +52,10 @@ class CallGuardApp : Application() {
                 original?.uncaughtException(Thread.currentThread(), throwable)
             }
         }
+    }
+
+    companion object {
+        private const val WATCHDOG_WORK_NAME = "callguard_watchdog"
     }
 
     private fun scheduleRestart() {

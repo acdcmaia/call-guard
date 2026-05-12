@@ -11,4 +11,6 @@
     </plurals>
     <string name="notification_channel_warning">Call Guard — alertas</string>
     <string name="notification_role_lost">Triagem inativa. Toque para reativar.</string>
+    <string name="notification_permission_revoked">Permissões revogadas. Toque para restaurar.</string>
+    <string name="notification_battery_unrestricted_lost">Restrição de bateria ativa. Toque para corrigir.</string>
 </resources>

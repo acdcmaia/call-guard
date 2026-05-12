@@ -14,7 +14,6 @@ data class RecentCall(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val number: String,
     val timestamp: Long,
-    val allowed: Boolean,
     val blockReason: BlockReason? = null,
     val matchedPattern: String? = null
 )
