@@ -213,7 +213,7 @@ private fun WindowSecondsDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = { if (isValid) onConfirm(secs!!) }, enabled = isValid) {
+            TextButton(onClick = { onConfirm(secs ?: return@TextButton) }, enabled = isValid) {
                 Text("Salvar")
             }
         },

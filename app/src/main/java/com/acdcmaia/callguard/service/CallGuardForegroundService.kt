@@ -5,14 +5,18 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
+import android.Manifest
 import android.app.role.RoleManager
+import android.os.PowerManager
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.content.pm.PackageManager
 import android.graphics.Color
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
+import androidx.core.content.ContextCompat
 import com.acdcmaia.callguard.CallGuardApp
 import com.acdcmaia.callguard.R
 import kotlinx.coroutines.CoroutineScope
@@ -76,6 +80,10 @@ class CallGuardForegroundService : Service() {
         val rm = getSystemService(RoleManager::class.java)
         if (rm.isRoleHeld(RoleManager.ROLE_CALL_SCREENING)) cancelRoleLostNotification()
         else showRoleLostNotification()
+        if (hasRequiredPermissions()) cancelPermissionRevokedNotification()
+        else showPermissionRevokedNotification()
+        if (isBatteryUnrestricted()) cancelBatteryUnrestrictedNotification()
+        else showBatteryUnrestrictedNotification()
         if (!pruned) {
             pruned = true
             pruneOldCalls()
@@ -165,6 +173,67 @@ class CallGuardForegroundService : Service() {
         getSystemService(NotificationManager::class.java).cancel(NOTIFICATION_WARNING_ID)
     }
 
+    private fun hasRequiredPermissions(): Boolean {
+        val granted = PackageManager.PERMISSION_GRANTED
+        return ContextCompat.checkSelfPermission(this, Manifest.permission.READ_CONTACTS) == granted &&
+                ContextCompat.checkSelfPermission(this, Manifest.permission.READ_CALL_LOG) == granted
+    }
+
+    private fun showPermissionRevokedNotification() {
+        val pi = PendingIntent.getActivity(
+            this, 2,
+            Intent(this, com.acdcmaia.callguard.MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            },
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        )
+        getSystemService(NotificationManager::class.java).notify(
+            NOTIFICATION_PERMISSION_ID,
+            NotificationCompat.Builder(this, CHANNEL_WARNING)
+                .setContentTitle(getString(R.string.app_name))
+                .setContentText(getString(R.string.notification_permission_revoked))
+                .setSmallIcon(R.drawable.ic_notification_blocked)
+                .setColor(Color.rgb(211, 47, 47))
+                .setColorized(true)
+                .setContentIntent(pi)
+                .setAutoCancel(true)
+                .build()
+        )
+    }
+
+    private fun cancelPermissionRevokedNotification() {
+        getSystemService(NotificationManager::class.java).cancel(NOTIFICATION_PERMISSION_ID)
+    }
+
+    private fun isBatteryUnrestricted(): Boolean =
+        getSystemService(PowerManager::class.java).isIgnoringBatteryOptimizations(packageName)
+
+    private fun showBatteryUnrestrictedNotification() {
+        val pi = PendingIntent.getActivity(
+            this, 3,
+            Intent(this, com.acdcmaia.callguard.MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            },
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        )
+        getSystemService(NotificationManager::class.java).notify(
+            NOTIFICATION_BATTERY_ID,
+            NotificationCompat.Builder(this, CHANNEL_WARNING)
+                .setContentTitle(getString(R.string.app_name))
+                .setContentText(getString(R.string.notification_battery_unrestricted_lost))
+                .setSmallIcon(R.drawable.ic_notification_blocked)
+                .setColor(Color.rgb(211, 47, 47))
+                .setColorized(true)
+                .setContentIntent(pi)
+                .setAutoCancel(true)
+                .build()
+        )
+    }
+
+    private fun cancelBatteryUnrestrictedNotification() {
+        getSystemService(NotificationManager::class.java).cancel(NOTIFICATION_BATTERY_ID)
+    }
+
     private fun pruneOldCalls() {
         val cutoff = System.currentTimeMillis() - PRUNE_WINDOW_MS
         serviceScope.launch {
@@ -223,6 +292,8 @@ class CallGuardForegroundService : Service() {
         private const val CHANNEL_WARNING = "callguard_warning"
         private const val NOTIFICATION_ID = 1
         private const val NOTIFICATION_WARNING_ID = 2
+        private const val NOTIFICATION_PERMISSION_ID = 3
+        private const val NOTIFICATION_BATTERY_ID = 4
 
         fun start(context: Context) {
             context.startService(Intent(context, CallGuardForegroundService::class.java))

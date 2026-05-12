@@ -14,6 +14,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -71,6 +72,7 @@ class SettingsViewModel(private val settings: SettingsRepository) : ViewModel() 
 
     fun downloadUpdate(context: Context) {
         val url = downloadUrl ?: return
+        if (!url.startsWith("https://github.com/acdcmaia/call-guard/")) return
         viewModelScope.launch {
             _updateStatus.value = UpdateStatus.DOWNLOADING
             _downloadProgress.value = 0
@@ -88,34 +90,36 @@ class SettingsViewModel(private val settings: SettingsRepository) : ViewModel() 
 
             val downloadId = dm.enqueue(request)
 
-            while (true) {
-                delay(500)
-                val cursor = dm.query(DownloadManager.Query().setFilterById(downloadId))
-                if (!cursor.moveToFirst()) { cursor.close(); continue }
-
-                val status = cursor.getInt(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS))
-                val downloaded = cursor.getLong(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR))
-                val total = cursor.getLong(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_TOTAL_SIZE_BYTES))
-                cursor.close()
-
-                if (total > 0) _downloadProgress.value = (downloaded * 100 / total).toInt()
-
-                when (status) {
-                    DownloadManager.STATUS_SUCCESSFUL -> {
-                        _apkUri.value = FileProvider.getUriForFile(
-                            context,
-                            "${context.packageName}.fileprovider",
-                            destFile
-                        )
-                        _updateStatus.value = UpdateStatus.READY_TO_INSTALL
-                        break
+            withTimeoutOrNull(10 * 60_000L) {
+                while (true) {
+                    delay(1_000)
+                    val cursor = dm.query(DownloadManager.Query().setFilterById(downloadId)) ?: continue
+                    val done = cursor.use {
+                        if (!it.moveToFirst()) return@use false
+                        val status = it.getInt(it.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS))
+                        val downloaded = it.getLong(it.getColumnIndexOrThrow(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR))
+                        val total = it.getLong(it.getColumnIndexOrThrow(DownloadManager.COLUMN_TOTAL_SIZE_BYTES))
+                        if (total > 0) _downloadProgress.value = (downloaded * 100 / total).toInt()
+                        when (status) {
+                            DownloadManager.STATUS_SUCCESSFUL -> {
+                                _apkUri.value = FileProvider.getUriForFile(
+                                    context,
+                                    "${context.packageName}.fileprovider",
+                                    destFile
+                                )
+                                _updateStatus.value = UpdateStatus.READY_TO_INSTALL
+                                true
+                            }
+                            DownloadManager.STATUS_FAILED -> {
+                                _updateStatus.value = UpdateStatus.DOWNLOAD_ERROR
+                                true
+                            }
+                            else -> false
+                        }
                     }
-                    DownloadManager.STATUS_FAILED -> {
-                        _updateStatus.value = UpdateStatus.DOWNLOAD_ERROR
-                        break
-                    }
+                    if (done) break
                 }
-            }
+            } ?: run { _updateStatus.value = UpdateStatus.DOWNLOAD_ERROR }
         }
     }
 

@@ -1,22 +1,29 @@
 package com.acdcmaia.callguard.data.db
 
 import android.content.Context
+import androidx.room.AutoMigration
 import androidx.room.Database
+import androidx.room.DeleteColumn
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
+import androidx.room.migration.AutoMigrationSpec
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
 @Database(
     entities = [BlacklistPattern::class, RecentCall::class],
-    version = 3,
-    exportSchema = true
+    version = 4,
+    exportSchema = true,
+    autoMigrations = [AutoMigration(from = 3, to = 4, spec = AppDatabase.Migration3To4::class)]
 )
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun blacklistDao(): BlacklistDao
     abstract fun recentCallDao(): RecentCallDao
+
+    @DeleteColumn(tableName = "recent_calls", columnName = "allowed")
+    class Migration3To4 : AutoMigrationSpec
 
     companion object {
         @Volatile private var instance: AppDatabase? = null
