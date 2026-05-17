@@ -8,6 +8,10 @@ Aplicativo Android de triagem de chamadas. Bloqueia automaticamente chamadas de 
 
 ## Histórico de versões
 
+### v0.1.10 (2026-05-17)
+- **feat:** detecção de números ocultos via `getHandlePresentation()`; chamadas com `presentation != PRESENTATION_ALLOWED` (cobre `PRESENTATION_RESTRICTED`, `PRESENTATION_UNKNOWN` e `PRESENTATION_PAYPHONE`) são bloqueadas imediatamente como `HIDDEN_NUMBER`, antes de qualquer outra verificação
+- **fix:** fallback de `handle` nulo removido de `onScreenCall`; `PRESENTATION_ALLOWED` garante handle não nulo, tornando o check redundante
+
 ### v0.1.9 (2026-05-11)
 - **feat:** `PhoneStateReceiver`, receiver estático que detecta `EXTRA_STATE_IDLE` (fim de chamada) e restaura o FGS; cobre chamadas que contornam o `CallScreeningService` (ex: bypass MIUI para contatos). Requer apenas `READ_BASIC_PHONE_STATE` (normal, auto-concedida); suporte a Android ≤12 via `READ_PHONE_STATE` removido
 - **feat:** `WatchdogWorker`, worker periódico via `WorkManager` que chama `startFromBackground()` a cada 15 minutos; agendado em `CallGuardApp.onCreate()` com política `KEEP`
@@ -140,6 +144,7 @@ A extensão `Context.callGuardApp` permite que qualquer componente acesse o `Cal
 ### `CallGuardScreeningService`
 Implementa `CallScreeningService` do Android. É vinculado pelo framework telecom a cada chamada recebida.
 
+- Verifica `getHandlePresentation()` antes de qualquer outra lógica; se o valor for diferente de `PRESENTATION_ALLOWED`, grava `RecentCall` com `number = ""` e `blockReason = HIDDEN_NUMBER` e rejeita imediatamente; cobre números ocultos (`PRESENTATION_RESTRICTED`), desconhecidos (`PRESENTATION_UNKNOWN`) e orelhões (`PRESENTATION_PAYPHONE`)
 - Executa a lógica de triagem em `Dispatchers.IO` com `coroutineScope { async }` para carregar blacklist, configurações e verificação de contato em paralelo
 - Se o número estiver na agenda, permite imediatamente (espelhando o comportamento das OEMs)
 - Sempre chama `respondToCall()`, inclusive em caso de exceção (fallback: permitir)
@@ -249,7 +254,7 @@ label: String     (descrição opcional)
 id (PK, autoincrement)
 number: String
 timestamp: Long
-blockReason: BlockReason?  (BLACKLIST | FIRST_CALL | null se permitida)
+blockReason: BlockReason?  (BLACKLIST | FIRST_CALL | HIDDEN_NUMBER | null se permitida)
 matchedPattern: String?    (padrão da blacklist que correspondeu, ou null)
 ```
 
@@ -287,9 +292,10 @@ Modelo de exibição do histórico. Campos relevantes:
 
 ```mermaid
 flowchart TD
-    A([Chamada recebida]) --> B{handle nulo?}
-    B -- Sim --> Z1([Permitir, fallback])
-    B -- Não --> C[Carregar blacklist, window_seconds\ne verificar contato em paralelo]
+    A([Chamada recebida]) --> P{presentation\n!= ALLOWED?}
+    P -- Sim --> ZH[Gravar RecentCall\nnumber=, blockReason=HIDDEN_NUMBER]
+    ZH --> ZR([Rejeitar\nsetDisallowCall + setRejectCall])
+    P -- Não --> C[Carregar blacklist, window_seconds\ne verificar contato em paralelo]
     C --> CK{Número está\nna agenda?}
     CK -- Sim --> ZC[Gravar RecentCall]
     ZC --> Z5([Permitir])

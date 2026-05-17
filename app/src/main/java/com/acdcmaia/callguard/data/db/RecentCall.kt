@@ -4,7 +4,7 @@ import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
 
-enum class BlockReason { BLACKLIST, FIRST_CALL }
+enum class BlockReason { BLACKLIST, FIRST_CALL, HIDDEN_NUMBER }
 
 @Entity(
     tableName = "recent_calls",

@@ -2,6 +2,7 @@ package com.acdcmaia.callguard.service
 
 import android.telecom.Call
 import android.telecom.CallScreeningService
+import android.telecom.TelecomManager
 import android.util.Log
 import com.acdcmaia.callguard.BuildConfig
 import com.acdcmaia.callguard.CallGuardApp
@@ -41,11 +42,29 @@ class CallGuardScreeningService : CallScreeningService() {
             return
         }
 
-        val number = callDetails.handle?.schemeSpecificPart ?: run {
-            if (BuildConfig.DEBUG) Log.w(TAG, "onScreenCall: handle null, allowing")
-            respondToCall(callDetails, CallResponse.Builder().build())
+        if (callDetails.handlePresentation != TelecomManager.PRESENTATION_ALLOWED) {
+            serviceScope.launch {
+                try {
+                    if (BuildConfig.DEBUG) Log.i(TAG, "BLOCK (hidden): presentation=${callDetails.handlePresentation}")
+                    app.callRepository.recordCall(RecentCall(
+                        number = "",
+                        timestamp = System.currentTimeMillis(),
+                        blockReason = BlockReason.HIDDEN_NUMBER
+                    ))
+                    respondToCall(callDetails, CallResponse.Builder()
+                        .setDisallowCall(true)
+                        .setRejectCall(true)
+                        .build())
+                } catch (e: Exception) {
+                    if (BuildConfig.DEBUG) Log.e(TAG, "Error handling hidden call, allowing as fallback", e)
+                    respondToCall(callDetails, CallResponse.Builder().build())
+                }
+                CallGuardForegroundService.startFromBackground(this@CallGuardScreeningService)
+            }
             return
         }
+
+        val number = callDetails.handle!!.schemeSpecificPart
 
         if (BuildConfig.DEBUG) Log.i(TAG, "onScreenCall: received call")
 
