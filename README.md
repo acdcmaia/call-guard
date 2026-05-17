@@ -93,7 +93,7 @@ Em **Configurações → Sobre**, são exibidos a versão, a data de build e o d
 
 ## Limitações conhecidas
 
-**MIUI (Xiaomi) e Samsung:** o sistema ignora o serviço de triagem para números salvos nos contatos, aprovando-os automaticamente antes mesmo de consultar o app. O comportamento final é o mesmo; contatos sempre são permitidos.
+**Impossibilidade de bloquear contatos em MIUI e Samsung:** nesses OEMs, o framework de telefonia do SO permite chamadas de contatos da agenda antes de invocar o serviço de triagem do app. Mesmo que um número da agenda esteja na lista negra, a chamada passará sem triagem. Não existe API pública para interceptar esse comportamento.
 
 **Restrição de bateria no MIUI:** pode impedir o funcionamento do serviço. Definir o app como "Sem restrições" em Configurações → Aplicativos → Call Guard → Bateria.
 

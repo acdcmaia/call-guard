@@ -290,6 +290,8 @@ Modelo de exibição do histórico. Campos relevantes:
 
 ## Fluxo de triagem de chamada
 
+**Limitação de OEM:** em MIUI e Samsung, o framework de telefonia do SO permite chamadas de contatos da agenda antes de invocar o app. O fluxo abaixo aplica-se apenas às chamadas que chegam ao `onScreenCall()` (números desconhecidos nesses OEMs, e todas as chamadas nos demais). Não há como bloquear um contato da agenda em MIUI e Samsung, mesmo que seu número esteja na lista negra.
+
 ```mermaid
 flowchart TD
     A([Chamada recebida]) --> P{presentation\n!= ALLOWED?}
@@ -465,7 +467,7 @@ Em dispositivos Xiaomi (MIUI) e Samsung, o framework telecom **ignora o `CallScr
 
 **Ícone na barra de status:** confirmado no MIUI que o `setSmallIcon()` é respeitado; o ícone muda de forma conforme o estado (escudo simples = ativo, escudo com ! = bloqueadas pendentes).
 
-**Implicação prática:** chamadas de contatos salvos na agenda nunca são bloqueadas, em qualquer dispositivo. A blacklist e a janela de tempo se aplicam apenas a números desconhecidos.
+**Implicação prática:** chamadas de contatos salvos na agenda nunca são bloqueadas em MIUI e Samsung, independente da lista negra ou de qualquer lógica no app. O SO permite a chamada antes de o `onScreenCall()` ser invocado. Não existe API pública para interceptar esse comportamento. Inverter a ordem das verificações no código do app não resolve o problema nesses OEMs.
 
 **Restrição de bateria no MIUI:** pode impedir o binding do serviço para números desconhecidos; definir o app como "Sem restrições" em Configurações → Aplicativos → Call Guard → Bateria.
 
