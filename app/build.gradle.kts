@@ -35,8 +35,8 @@ android {
         applicationId = "com.acdcmaia.callguard"
         minSdk = 29
         targetSdk = 36
-        versionCode = 10
-        versionName = "0.1.10"
+        versionCode = 20
+        versionName = "0.2.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField("String", "BUILD_DATE", "\"$buildDate\"")

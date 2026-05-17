@@ -8,7 +8,7 @@ Aplicativo Android de triagem de chamadas. Bloqueia automaticamente chamadas de 
 
 ## Histórico de versões
 
-### v0.1.10 (2026-05-17)
+### v0.2.0 (2026-05-17)
 - **feat:** detecção de números ocultos via `getHandlePresentation()`; chamadas com `presentation != PRESENTATION_ALLOWED` (cobre `PRESENTATION_RESTRICTED`, `PRESENTATION_UNKNOWN` e `PRESENTATION_PAYPHONE`) são bloqueadas imediatamente como `HIDDEN_NUMBER`, antes de qualquer outra verificação
 - **fix:** fallback de `handle` nulo removido de `onScreenCall`; `PRESENTATION_ALLOWED` garante handle não nulo, tornando o check redundante
 
