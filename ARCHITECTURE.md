@@ -290,7 +290,7 @@ Modelo de exibição do histórico. Campos relevantes:
 
 ## Fluxo de triagem de chamada
 
-**Limitação de OEM:** em MIUI e Samsung, o framework de telefonia do SO permite chamadas de contatos da agenda antes de invocar o app. O fluxo abaixo aplica-se apenas às chamadas que chegam ao `onScreenCall()` (números desconhecidos nesses OEMs, e todas as chamadas nos demais). Não há como bloquear um contato da agenda em MIUI e Samsung, mesmo que seu número esteja na lista negra.
+A verificação de contatos precede a verificação da lista negra porque em MIUI e Samsung o SO permite chamadas de contatos antes de invocar o `onScreenCall()`. Implementar a checagem de lista negra antes da agenda não teria efeito prático nesses OEMs, pois contatos passariam de qualquer forma. O fluxo abaixo aplica-se apenas às chamadas que chegam ao `onScreenCall()`.
 
 ```mermaid
 flowchart TD
@@ -467,7 +467,7 @@ Em dispositivos Xiaomi (MIUI) e Samsung, o framework telecom **ignora o `CallScr
 
 **Ícone na barra de status:** confirmado no MIUI que o `setSmallIcon()` é respeitado; o ícone muda de forma conforme o estado (escudo simples = ativo, escudo com ! = bloqueadas pendentes).
 
-**Implicação prática:** chamadas de contatos salvos na agenda nunca são bloqueadas em MIUI e Samsung, independente da lista negra ou de qualquer lógica no app. O SO permite a chamada antes de o `onScreenCall()` ser invocado. Não existe API pública para interceptar esse comportamento. Inverter a ordem das verificações no código do app não resolve o problema nesses OEMs.
+**Implicação prática:** chamadas de contatos salvos na agenda nunca são bloqueadas em MIUI e Samsung, independente da lista negra. O SO permite a chamada antes de o `onScreenCall()` ser invocado. Por esse motivo, a checagem de lista negra não foi implementada com prioridade sobre a checagem de contatos. Mesmo que fosse, o bloqueio não funcionaria nesses OEMs. Não existe API pública para interceptar esse comportamento.
 
 **Restrição de bateria no MIUI:** pode impedir o binding do serviço para números desconhecidos; definir o app como "Sem restrições" em Configurações → Aplicativos → Call Guard → Bateria.
 
