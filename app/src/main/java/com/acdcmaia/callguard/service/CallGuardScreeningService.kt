@@ -42,8 +42,27 @@ class CallGuardScreeningService : CallScreeningService() {
             return
         }
 
-        if (callDetails.handlePresentation != TelecomManager.PRESENTATION_ALLOWED) {
-            serviceScope.launch {
+        serviceScope.launch {
+            val serviceEnabled = app.settingsRepository.serviceEnabled.first()
+            if (!serviceEnabled) {
+                val number = if (callDetails.handlePresentation == TelecomManager.PRESENTATION_ALLOWED)
+                    callDetails.handle?.schemeSpecificPart ?: "" else ""
+                try {
+                    if (BuildConfig.DEBUG) Log.i(TAG, "ALLOW (service disabled): $number")
+                    app.callRepository.recordCall(RecentCall(
+                        number = number,
+                        timestamp = System.currentTimeMillis(),
+                        serviceWasDisabled = true
+                    ))
+                } catch (e: Exception) {
+                    if (BuildConfig.DEBUG) Log.e(TAG, "Error recording disabled-service call", e)
+                }
+                respondToCall(callDetails, CallResponse.Builder().build())
+                CallGuardForegroundService.startFromBackground(this@CallGuardScreeningService)
+                return@launch
+            }
+
+            if (callDetails.handlePresentation != TelecomManager.PRESENTATION_ALLOWED) {
                 try {
                     if (BuildConfig.DEBUG) Log.i(TAG, "BLOCK (hidden): presentation=${callDetails.handlePresentation}")
                     app.callRepository.recordCall(RecentCall(
@@ -60,15 +79,12 @@ class CallGuardScreeningService : CallScreeningService() {
                     respondToCall(callDetails, CallResponse.Builder().build())
                 }
                 CallGuardForegroundService.startFromBackground(this@CallGuardScreeningService)
+                return@launch
             }
-            return
-        }
 
-        val number = callDetails.handle!!.schemeSpecificPart
+            val number = callDetails.handle!!.schemeSpecificPart
+            if (BuildConfig.DEBUG) Log.i(TAG, "onScreenCall: received call")
 
-        if (BuildConfig.DEBUG) Log.i(TAG, "onScreenCall: received call")
-
-        serviceScope.launch {
             try {
                 screenCall(callDetails, number)
             } catch (e: Exception) {

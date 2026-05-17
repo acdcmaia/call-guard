@@ -37,6 +37,7 @@ class CallGuardForegroundService : Service() {
     private val serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private var pruned = false
     private var lastBlockedCount = 0L
+    private var lastServiceEnabled = true
 
     // Re-posta a notificação quando a tela acende após ultra economia de bateria (processo congelado,
     // notificação removida pelo SO — onStartCommand não é chamado porque o serviço não foi morto)
@@ -64,13 +65,14 @@ class CallGuardForegroundService : Service() {
     override fun onCreate() {
         super.onCreate()
         createNotificationChannels()
-        lastBlockedCount = runBlocking(Dispatchers.IO) {
+        runBlocking(Dispatchers.IO) {
             val total = app.callRepository.countBlockedOnce()
             val seen = app.settingsRepository.seenBlockedCount.first()
-            maxOf(0L, total - maxOf(0L, seen))
+            lastServiceEnabled = app.settingsRepository.serviceEnabled.first()
+            lastBlockedCount = maxOf(0L, total - maxOf(0L, seen))
         }
         startForeground(NOTIFICATION_ID, buildNotification(lastBlockedCount))
-        observeBlockedCount()
+        observeNotificationState()
         registerReceiver(screenOnReceiver, IntentFilter(Intent.ACTION_SCREEN_ON))
     }
 
@@ -91,24 +93,45 @@ class CallGuardForegroundService : Service() {
         return START_STICKY
     }
 
-    private fun observeBlockedCount() {
+    private fun observeNotificationState() {
         serviceScope.launch {
             combine(
                 app.callRepository.countBlockedFlow(),
-                app.settingsRepository.seenBlockedCount
-            ) { total, seen ->
-                maxOf(0L, total - maxOf(0L, seen))
+                app.settingsRepository.seenBlockedCount,
+                app.settingsRepository.serviceEnabled
+            ) { total, seen, enabled ->
+                Triple(total, seen, enabled)
             }
                 .distinctUntilChanged()
                 .debounce(500L)
-                .collect { newCount ->
-                    lastBlockedCount = newCount
-                    updateNotification(newCount)
+                .collect { (total, seen, enabled) ->
+                    val wasEnabled = lastServiceEnabled
+                    lastServiceEnabled = enabled
+                    if (!wasEnabled && enabled) {
+                        app.settingsRepository.setSeenBlockedCount(total)
+                        lastBlockedCount = 0L
+                    } else if (enabled) {
+                        lastBlockedCount = maxOf(0L, total - maxOf(0L, seen))
+                    }
+                    updateNotification(lastBlockedCount)
                 }
         }
     }
 
     private fun buildNotification(newBlockedCount: Long): Notification {
+        if (!lastServiceEnabled) {
+            return NotificationCompat.Builder(this, CHANNEL_DISABLED)
+                .setContentTitle(getString(R.string.app_name))
+                .setContentText(getString(R.string.notification_disabled))
+                .setSmallIcon(R.drawable.ic_notification)
+                .setColor(Color.rgb(117, 117, 117))
+                .setColorized(true)
+                .setContentIntent(openAppPendingIntent)
+                .setNumber(0)
+                .setOngoing(true)
+                .setSilent(true)
+                .build()
+        }
         return if (newBlockedCount > 0L) {
             NotificationCompat.Builder(this, CHANNEL_BLOCKED)
                 .setContentTitle(getString(R.string.app_name))
@@ -283,6 +306,15 @@ class CallGuardForegroundService : Service() {
             it.lockscreenVisibility = Notification.VISIBILITY_PUBLIC
             nm.createNotificationChannel(it)
         }
+        NotificationChannel(
+            CHANNEL_DISABLED,
+            getString(R.string.notification_channel_disabled),
+            NotificationManager.IMPORTANCE_DEFAULT
+        ).also {
+            it.setShowBadge(false)
+            it.lockscreenVisibility = Notification.VISIBILITY_SECRET
+            nm.createNotificationChannel(it)
+        }
     }
 
     companion object {
@@ -290,6 +322,7 @@ class CallGuardForegroundService : Service() {
         private const val CHANNEL_BLOCKED = "callguard_blocked"
         private const val CHANNEL_IDLE = "callguard_idle"
         private const val CHANNEL_WARNING = "callguard_warning"
+        private const val CHANNEL_DISABLED = "callguard_disabled"
         private const val NOTIFICATION_ID = 1
         private const val NOTIFICATION_WARNING_ID = 2
         private const val NOTIFICATION_PERMISSION_ID = 3

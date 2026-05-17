@@ -8,6 +8,12 @@ Aplicativo Android de triagem de chamadas. Bloqueia automaticamente chamadas de 
 
 ## Histórico de versões
 
+### v0.2.1 (2026-05-17)
+- **feat:** toggle ON/OFF na tela de Configurações ("Habilitar Call Guard"); quando desligado, o serviço permanece ativo mas responde com permitir a todas as chamadas; chamadas recebidas com serviço desligado são gravadas no Room com `serviceWasDisabled = true`; notificação persistente exibida em cinza via `CHANNEL_DISABLED`
+- **feat:** ao reativar o serviço, `seenBlockedCount` é atualizado para o total atual de chamadas bloqueadas, garantindo que a notificação volte ao estado verde independente do estado anterior ao desligamento
+- **feat:** `BootReceiver` redefine `service_enabled = true` via `goAsync()` a cada reinicialização do dispositivo
+- **feat:** histórico exibe "Permitida (serviço desligado)" para chamadas recebidas com o serviço desligado; número oculto recebido nessa condição exibe "Número oculto"
+
 ### v0.2.0 (2026-05-17)
 - **feat:** detecção de números ocultos via `getHandlePresentation()`; chamadas com `presentation != PRESENTATION_ALLOWED` (cobre `PRESENTATION_RESTRICTED`, `PRESENTATION_UNKNOWN` e `PRESENTATION_PAYPHONE`) são bloqueadas imediatamente como `HIDDEN_NUMBER`, antes de qualquer outra verificação
 - **fix:** fallback de `handle` nulo removido de `onScreenCall`; `PRESENTATION_ALLOWED` garante handle não nulo, tornando o check redundante
@@ -144,7 +150,9 @@ A extensão `Context.callGuardApp` permite que qualquer componente acesse o `Cal
 ### `CallGuardScreeningService`
 Implementa `CallScreeningService` do Android. É vinculado pelo framework telecom a cada chamada recebida.
 
-- Verifica `getHandlePresentation()` antes de qualquer outra lógica; se o valor for diferente de `PRESENTATION_ALLOWED`, grava `RecentCall` com `number = ""` e `blockReason = HIDDEN_NUMBER` e rejeita imediatamente; cobre números ocultos (`PRESENTATION_RESTRICTED`), desconhecidos (`PRESENTATION_UNKNOWN`) e orelhões (`PRESENTATION_PAYPHONE`)
+- Retorna imediatamente com permitir para chamadas saintes (`DIRECTION_OUTGOING`), sem gravar no Room
+- Verifica `serviceEnabled` (DataStore) logo em seguida; se desligado, grava `RecentCall` com `serviceWasDisabled = true` (sem `blockReason`) e responde com permitir; o número capturado é `schemeSpecificPart` se `PRESENTATION_ALLOWED`, ou string vazia para números ocultos
+- Verifica `getHandlePresentation()` antes de qualquer outra lógica de triagem; se o valor for diferente de `PRESENTATION_ALLOWED`, grava `RecentCall` com `number = ""` e `blockReason = HIDDEN_NUMBER` e rejeita imediatamente; cobre números ocultos (`PRESENTATION_RESTRICTED`), desconhecidos (`PRESENTATION_UNKNOWN`) e orelhões (`PRESENTATION_PAYPHONE`)
 - Executa a lógica de triagem em `Dispatchers.IO` com `coroutineScope { async }` para carregar blacklist, configurações e verificação de contato em paralelo
 - Se o número estiver na agenda, permite imediatamente (espelhando o comportamento das OEMs)
 - Sempre chama `respondToCall()`, inclusive em caso de exceção (fallback: permitir)
@@ -164,31 +172,36 @@ Métodos públicos:
 ### `CallGuardForegroundService`
 Serviço de notificação persistente (`foregroundServiceType="specialUse"`, subtipo `callScreening`). Mantém o processo do app vivo para garantir que o `CallGuardScreeningService` seja vinculado pelo telecom sem ser morto pelo sistema.
 
-Observa em tempo real a combinação de dois flows:
+Observa em tempo real a combinação de três flows via `observeNotificationState()`:
 1. `CallRepository.countBlockedFlow()`: total acumulado de chamadas bloqueadas no Room (últimas 100)
 2. `SettingsRepository.seenBlockedCount`: total visto na última vez que o app foi aberto
+3. `SettingsRepository.serviceEnabled`: estado do toggle ON/OFF
 
-O delta entre os dois valores determina o estado da notificação:
-- **Delta = 0:** fundo verde, ícone de escudo simples, texto "Call Guard ativo"
-- **Delta > 0:** fundo vermelho, ícone de escudo com !, texto "N chamada(s) bloqueada(s)"
+O estado da notificação é determinado na seguinte ordem de prioridade:
+- **Serviço desligado:** fundo cinza, ícone de escudo simples, texto "Call Guard desligado" (`CHANNEL_DISABLED`)
+- **Delta = 0:** fundo verde, ícone de escudo simples, texto "Call Guard ativo" (`CHANNEL_IDLE`)
+- **Delta > 0:** fundo vermelho, ícone de escudo com !, texto "N chamada(s) bloqueada(s)" (`CHANNEL_BLOCKED`)
 
-O `PendingIntent` da notificação aponta para `MainActivity` via `PendingIntent.getActivity()`. Dois canais distintos controlam o badge do ícone do app:
+Ao detectar transição de desligado para ativo, `seenBlockedCount` é atualizado para o total atual de chamadas bloqueadas, zerando o delta; a notificação volta ao verde independente do estado anterior ao desligamento.
+
+O `PendingIntent` da notificação aponta para `MainActivity` via `PendingIntent.getActivity()`. Três canais distintos controlam o badge do ícone do app:
 - `callguard_blocked` (`setShowBadge(true)`): usado quando há bloqueios não vistos
 - `callguard_idle` (`setShowBadge(false)`): usado no estado normal; suprime o badge mesmo com notificação ongoing
+- `callguard_disabled` (`setShowBadge(false)`): usado quando o serviço está desligado
 
 Em `onCreate`, lê o count correto do DB e do DataStore via `runBlocking(Dispatchers.IO)` antes do primeiro `startForeground`, garantindo que a notificação já apareça com o estado correto (vermelho com contagem) ao reiniciar após processo morto, sem "pisca verde" transitório.
 
 Registra dinamicamente um `BroadcastReceiver` em `onCreate` (desregistrado em `onDestroy`):
-- `screenOnReceiver`: escuta `ACTION_SCREEN_ON`; re-posta a notificação com `lastBlockedCount` quando a tela acende após o ultra modo de bateria ter congelado o processo (sem matar o serviço)
+- `screenOnReceiver`: escuta `ACTION_SCREEN_ON`; re-posta a notificação com `lastBlockedCount` e `lastServiceEnabled` quando a tela acende após o ultra modo de bateria ter congelado o processo (sem matar o serviço)
 
-Terceiro canal `callguard_warning` (`IMPORTANCE_HIGH`, `VISIBILITY_PUBLIC`) usado para três tipos de alerta, todos disparados em `onStartCommand`:
+Quarto canal `callguard_warning` (`IMPORTANCE_HIGH`, `VISIBILITY_PUBLIC`) usado para três tipos de alerta, todos disparados em `onStartCommand`:
 - **Triagem inativa** (`NOTIFICATION_WARNING_ID = 2`): quando `ROLE_CALL_SCREENING` não está presente
 - **Permissões revogadas** (`NOTIFICATION_PERMISSION_ID = 3`): quando `READ_CONTACTS` ou `READ_CALL_LOG` foram revogadas pelo auto-reset do Android (API 30+)
 - **Restrição de bateria ativa** (`NOTIFICATION_BATTERY_ID = 4`): quando a isenção de `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` foi removida manualmente pelo usuário
 
 Todas aparecem como heads-up, fazem som e são canceladas automaticamente quando a condição é resolvida. Tocar em qualquer uma abre `MainActivity`, cujo `onResume` detecta e aciona o passo de onboarding correspondente.
 
-Mantém `lastBlockedCount` como campo de instância para cachear o último delta emitido. Em `onStartCommand`, re-chama `startForeground` com esse valor cacheado, restaurando a notificação caso ela tenha sido removida pelo modo de economia de bateria sem reiniciar o serviço.
+Mantém `lastBlockedCount` e `lastServiceEnabled` como campos de instância para cachear o último estado emitido. Em `onStartCommand`, re-chama `startForeground` com esses valores cacheados, restaurando a notificação caso ela tenha sido removida pelo modo de economia de bateria sem reiniciar o serviço.
 
 Ao iniciar (via `onStartCommand`), executa uma única vez a poda de chamadas com mais de 30 dias e ajusta o `seenBlockedCount` para que não ultrapasse o novo total pós-poda.
 
@@ -196,6 +209,8 @@ Ao iniciar (via `onStartCommand`), executa uma única vez a poda de chamadas com
 `BroadcastReceiver` que escuta `ACTION_BOOT_COMPLETED` e inicia o `CallGuardForegroundService` após reinicialização do dispositivo. Registrado com `android:exported="false"`.
 
 Contém uma guarda de uptime: se `SystemClock.elapsedRealtime() > 5 min` ao receber o broadcast, o evento é ignorado; isso bloqueia o falso `BOOT_COMPLETED` que o processo de backup do MIUI dispara durante instalação/restauração.
+
+Usa `goAsync()` para executar em coroutine: antes de iniciar o FGS, chama `settingsRepository.setServiceEnabled(true)` para garantir que o serviço sempre inicie habilitado após um reboot, independente do estado anterior ao desligamento do dispositivo.
 
 ### `PowerSaveReceiver`
 `BroadcastReceiver` registrado com `android:exported="false"` que escuta três broadcasts de mudança de modo de energia:
@@ -254,8 +269,9 @@ label: String     (descrição opcional)
 id (PK, autoincrement)
 number: String
 timestamp: Long
-blockReason: BlockReason?  (BLACKLIST | FIRST_CALL | HIDDEN_NUMBER | null se permitida)
-matchedPattern: String?    (padrão da blacklist que correspondeu, ou null)
+blockReason: BlockReason?     (BLACKLIST | FIRST_CALL | HIDDEN_NUMBER | null se permitida)
+matchedPattern: String?       (padrão da blacklist que correspondeu, ou null)
+serviceWasDisabled: Boolean   (true se a chamada foi recebida com o serviço desligado; default 0)
 ```
 
 ### DataStore: `settings`
@@ -266,6 +282,7 @@ matchedPattern: String?    (padrão da blacklist que correspondeu, ou null)
 | `seen_blocked_count` | Long | -1 | Total de bloqueadas na última vez que o app foi aberto; -1 (nunca aberto) é tratado como 0 no cálculo do delta |
 | `autostart_prompt_shown` | Boolean | false | Se o onboarding de início automático já foi exibido ao usuário |
 | `autostart_configured` | Boolean | false | Se o usuário confirmou que configurou o início automático no gerenciador do fabricante |
+| `service_enabled` | Boolean | true | Estado do toggle ON/OFF de triagem; resetado para `true` a cada reinicialização do dispositivo |
 
 ### `CallLogRepository`
 Agrega duas fontes para o histórico:
@@ -285,6 +302,7 @@ Modelo de exibição do histórico. Campos relevantes:
 | `callType` | Int | Tipo conforme `CallLog.Calls` (-1 para `appOnly`) |
 | `blockReason` | BlockReason? | Motivo do bloqueio, ou null se permitida |
 | `appOnly` | Boolean | True para bloqueadas ainda não no log do sistema |
+| `serviceWasDisabled` | Boolean | True se a chamada foi recebida com o serviço desligado |
 
 ---
 
@@ -294,7 +312,12 @@ A verificação de contatos precede a verificação da lista negra porque em MIU
 
 ```mermaid
 flowchart TD
-    A([Chamada recebida]) --> P{presentation\n!= ALLOWED?}
+    A([Chamada recebida]) --> OT{Chamada\nsainte?}
+    OT -- Sim --> ZO([Permitir])
+    OT -- Não --> SD{Serviço\ndesligado?}
+    SD -- Sim --> ZSD[Gravar RecentCall\nserviceWasDisabled=true]
+    ZSD --> ZA([Permitir])
+    SD -- Não --> P{presentation\n!= ALLOWED?}
     P -- Sim --> ZH[Gravar RecentCall\nnumber=, blockReason=HIDDEN_NUMBER]
     ZH --> ZR([Rejeitar\nsetDisallowCall + setRejectCall])
     P -- Não --> C[Carregar blacklist, window_seconds\ne verificar contato em paralelo]
@@ -334,15 +357,19 @@ flowchart LR
 
 ```mermaid
 flowchart LR
-    A[RecentCall inserido no Room] --> B[countBlockedFlow emite\nnovo total]
-    B --> C[CallGuardForegroundService\ncalcula delta]
-    C --> D{delta > 0?}
+    A[RecentCall inserido\nou serviceEnabled muda] --> C[CallGuardForegroundService\ncombina blocked + seenCount + serviceEnabled]
+    C --> DIS{serviceEnabled?}
+    DIS -- Não --> GR[Notificação cinza\nCall Guard desligado]
+    DIS -- Sim --> D{delta > 0?}
     D -- Sim --> E[Notificação vermelha\nN chamadas bloqueadas]
     D -- Não --> F[Notificação verde\nCall Guard ativo]
 
     G[Usuário sai do app] --> H[MainActivity.onPause]
     H --> I[seenBlockedCount = total atual]
     I --> C
+
+    J[Usuário reativa serviço] --> K[seenBlockedCount = total atual]
+    K --> F
 ```
 
 ---
@@ -370,7 +397,7 @@ Bottom navigation com 3 abas:
 |---|---|---|
 | `calls` | `RecentCallsScreen` | Histórico de chamadas liberadas e bloqueadas (efetuadas não exibidas); nome do contato exibido quando disponível; bloqueadas em vermelho |
 | `blacklist` | `BlacklistScreen` | Gerenciar sequências bloqueadas; suporta adicionar, editar e remover |
-| `settings` | `SettingsScreen` | Janela de tempo; Início automático do aplicativo (destacado em vermelho quando `autostart_configured = false` e o fabricante suporta); Sobre (dialog com versão/build/desenvolvedor); Verificar atualizações (checagem automática via GitHub API; ao detectar nova versão, baixa e instala o APK sem sair do app) |
+| `settings` | `SettingsScreen` | Habilitar Call Guard (toggle ON/OFF; primeiro item); Janela de tempo; Início automático do aplicativo (destacado em vermelho quando `autostart_configured = false` e o fabricante suporta); Sobre (dialog com versão/build/desenvolvedor); Verificar atualizações (checagem automática via GitHub API; ao detectar nova versão, baixa e instala o APK sem sair do app) |
 
 ---
 

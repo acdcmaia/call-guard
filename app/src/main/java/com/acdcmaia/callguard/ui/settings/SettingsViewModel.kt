@@ -31,9 +31,14 @@ class SettingsViewModel(private val settings: SettingsRepository) : ViewModel() 
 
     val windowSeconds: Flow<Int> = settings.windowSeconds
     val autostartConfigured: Flow<Boolean> = settings.autostartConfigured
+    val serviceEnabled: Flow<Boolean> = settings.serviceEnabled
 
     fun markAutostartConfigured() {
         viewModelScope.launch { settings.setAutostartConfigured() }
+    }
+
+    fun setServiceEnabled(enabled: Boolean) {
+        viewModelScope.launch { settings.setServiceEnabled(enabled) }
     }
 
     private val _updateStatus = MutableStateFlow(UpdateStatus.CHECKING)

@@ -1,5 +1,6 @@
 package com.acdcmaia.callguard.data.db
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
@@ -15,5 +16,6 @@ data class RecentCall(
     val number: String,
     val timestamp: Long,
     val blockReason: BlockReason? = null,
-    val matchedPattern: String? = null
+    val matchedPattern: String? = null,
+    @ColumnInfo(defaultValue = "0") val serviceWasDisabled: Boolean = false
 )

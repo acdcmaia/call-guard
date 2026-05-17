@@ -13,9 +13,12 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 
 @Database(
     entities = [BlacklistPattern::class, RecentCall::class],
-    version = 4,
+    version = 5,
     exportSchema = true,
-    autoMigrations = [AutoMigration(from = 3, to = 4, spec = AppDatabase.Migration3To4::class)]
+    autoMigrations = [
+        AutoMigration(from = 3, to = 4, spec = AppDatabase.Migration3To4::class),
+        AutoMigration(from = 4, to = 5)
+    ]
 )
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {

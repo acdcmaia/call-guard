@@ -6,10 +6,12 @@ Call Guard é um aplicativo Android de triagem de chamadas. O princípio é simp
 
 ```mermaid
 flowchart LR
-    A([Chamada recebida]) --> P{Número oculto?}
+    A([Chamada recebida]) --> OFF{Serviço\ndesligado?}
+    OFF -- Sim --> E([Permitida])
+    OFF -- Não --> P{Número oculto?}
     P -- Sim --> C([Bloqueada])
     P -- Não --> CK{Na agenda?}
-    CK -- Sim --> E([Permitida])
+    CK -- Sim --> E
     CK -- Não --> B{Na lista negra?}
     B -- Sim --> C
     B -- Não --> D{Ligou antes\nnos últimos X segundos?}
@@ -17,6 +19,7 @@ flowchart LR
     D -- Sim --> E
 ```
 
+- **Serviço desligado:** quando desabilitado em Configurações, todas as chamadas são permitidas sem triagem
 - **Número oculto:** chamadas sem identificação de origem (número oculto, desconhecido ou orelhão) são sempre bloqueadas
 - **Contatos da agenda:** números salvos na agenda são sempre permitidos
 - **Lista negra:** qualquer chamada cujo número contenha a sequência configurada é bloqueada imediatamente
@@ -43,6 +46,9 @@ flowchart LR
 
 ## Utilização
 
+### Ligar/desligar a triagem
+Em **Configurações**, o toggle **Habilitar Call Guard** (primeiro item) ativa ou desativa a triagem. Quando desligado, todas as chamadas são permitidas e a notificação fica cinza. Ao reativar, o app volta ao estado verde, sem histórico de chamadas pendentes. Após reiniciar o dispositivo, o serviço é sempre religado automaticamente.
+
 ### Janela de tempo
 Em **Configurações**, defina quantos segundos o app aguarda por uma repetição de chamada. Default: 120 segundos.
 
@@ -59,6 +65,7 @@ O app mantém uma notificação ativa enquanto o serviço de triagem estiver em 
 
 - **Fundo verde / ícone de escudo:** sem novos bloqueios desde a última abertura do app
 - **Fundo vermelho / ícone de escudo com !:** indica quantas chamadas foram bloqueadas desde a última abertura do app
+- **Fundo cinza / ícone de escudo:** serviço desligado manualmente em Configurações
 
 Ao sair do app, o contador é zerado e a notificação volta ao estado verde.
 

@@ -47,6 +47,7 @@ fun SettingsScreen() {
     val downloadProgress by vm.downloadProgress.collectAsStateWithLifecycle()
     val apkUri by vm.apkUri.collectAsStateWithLifecycle()
     val autostartConfigured by vm.autostartConfigured.collectAsStateWithLifecycle(initialValue = true)
+    val serviceEnabled by vm.serviceEnabled.collectAsStateWithLifecycle(initialValue = true)
     val autostartSupported = remember { AutoStartHelper.canOpen(context) }
     var showDialog by remember { mutableStateOf(false) }
     var showAbout by remember { mutableStateOf(false) }
@@ -68,6 +69,17 @@ fun SettingsScreen() {
 
     Column(modifier = Modifier.fillMaxSize()) {
         TopAppBar(title = { Text("Configurações") })
+        ListItem(
+            headlineContent = { Text("Habilitar Call Guard") },
+            trailingContent = {
+                Switch(
+                    checked = serviceEnabled,
+                    onCheckedChange = { vm.setServiceEnabled(it) }
+                )
+            },
+            modifier = Modifier.clickable { vm.setServiceEnabled(!serviceEnabled) }
+        )
+        HorizontalDivider()
         ListItem(
             headlineContent = { Text("Janela de tempo") },
             supportingContent = { Text(if (windowSeconds == 1) "1 segundo" else "$windowSeconds segundos") },

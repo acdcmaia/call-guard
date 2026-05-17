@@ -72,19 +72,24 @@ private fun CallHistoryRow(item: CallHistoryItem) {
         else -> "Liberada"
     }
 
-    val statusLabel = when (item.blockReason) {
-        BlockReason.BLACKLIST -> "Bloqueada (lista negra): ${item.matchedPatternLabel}"
-        BlockReason.FIRST_CALL -> "Bloqueada (1ª chamada)"
-        BlockReason.HIDDEN_NUMBER -> "Bloqueada (número oculto)"
-        null -> typeLabel
+    val statusLabel = when {
+        item.serviceWasDisabled -> "Permitida (serviço desligado)"
+        item.blockReason == BlockReason.BLACKLIST -> "Bloqueada (lista negra): ${item.matchedPatternLabel}"
+        item.blockReason == BlockReason.FIRST_CALL -> "Bloqueada (1ª chamada)"
+        item.blockReason == BlockReason.HIDDEN_NUMBER -> "Bloqueada (número oculto)"
+        else -> typeLabel
     }
 
-    val isBlocked = item.blockReason != null || item.callType == CallLog.Calls.BLOCKED_TYPE
+    val isBlocked = !item.serviceWasDisabled && (item.blockReason != null || item.callType == CallLog.Calls.BLOCKED_TYPE)
     val textColor = if (isBlocked) Color.Red else Color.Unspecified
 
     ListItem(
         headlineContent = {
-            val displayNumber = if (item.blockReason == BlockReason.HIDDEN_NUMBER) "Número oculto" else item.number
+            val displayNumber = when {
+                item.blockReason == BlockReason.HIDDEN_NUMBER -> "Número oculto"
+                item.serviceWasDisabled && item.number.isEmpty() -> "Número oculto"
+                else -> item.number
+            }
             if (item.contactName != null) {
                 Column {
                     Text(item.contactName, color = textColor)

@@ -37,7 +37,8 @@ class CallLogRepository(
                     matchedPattern = appCall?.matchedPattern,
                     matchedPatternLabel = label,
                     blockReason = appCall?.blockReason,
-                    appOnly = false
+                    appOnly = false,
+                    serviceWasDisabled = appCall?.serviceWasDisabled ?: false
                 )
             }
 
@@ -55,7 +56,8 @@ class CallLogRepository(
                     matchedPattern = appCall.matchedPattern,
                     matchedPatternLabel = label,
                     blockReason = appCall.blockReason,
-                    appOnly = true
+                    appOnly = true,
+                    serviceWasDisabled = appCall.serviceWasDisabled
                 )
             }
 
