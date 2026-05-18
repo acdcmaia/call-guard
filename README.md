@@ -6,12 +6,10 @@ Call Guard é um aplicativo Android de triagem de chamadas. O princípio é simp
 
 ```mermaid
 flowchart TD
-    A([Chamada]) --> OFF{Desligado?}
-    OFF -- Sim --> E([Permitida])
-    OFF -- Não --> P{Oculto?}
+    A([Chamada]) --> P{Oculto?}
     P -- Sim --> C([Bloqueada])
     P -- Não --> CK{Agenda?}
-    CK -- Sim --> E
+    CK -- Sim --> E([Permitida])
     CK -- Não --> B{Blacklist?}
     B -- Sim --> C
     B -- Não --> D{Repetição\nna janela?}
