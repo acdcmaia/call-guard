@@ -252,6 +252,8 @@ Objeto singleton que mapeia fabricantes para as intents de configuração de in�
 - `canOpen(context)`: retorna `true` se o dispositivo tem uma intent de início automático resolvível
 - `open(context)`: abre a tela de configuração do fabricante; retorna `false` se não disponível ou se a activity lançar exceção
 
+**Samsung:** a entrada cadastrada (`com.samsung.android.lool / BatteryActivity`) existia em versões antigas do One UI. Em versões mais recentes o caminho mudou e `resolveActivity` retorna `null`; por essa razão, a opção "Início automático do aplicativo" não aparece na interface em Samsung com One UI mais recente, nem no onboarding nem na tela de Configurações. Assim, as versões mais novas do One UI não foram abarcadas porque Samsung tende a ser menos restritivo com início automático do que o MIUI, tornando o problema menos crítico na prática.
+
 ### `MarkSeenReceiver`
 `BroadcastReceiver` com `android:exported="false"`. Mantido no manifesto para uso futuro; a lógica de reset do contador está em `MainActivity.onPause()`.
 
