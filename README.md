@@ -120,4 +120,4 @@ Em **Configurações**, toque no campo **Gostou** ou no ícone "?" ao lado para 
 
 ## Licença
 
-Uso pessoal.
+Distribuído sob a licença [MIT](LICENSE).
