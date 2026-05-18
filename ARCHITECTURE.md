@@ -8,6 +8,9 @@ Aplicativo Android de triagem de chamadas. Bloqueia automaticamente chamadas de 
 
 ## Histórico de versões
 
+### v0.2.3 (2026-05-18)
+- **fix:** ao detectar mudança de `versionCode` (via chave `last_version_code` no DataStore), reseta `autostart_prompt_shown` e `autostart_configured` para `false`, re-disparando o onboarding de início automático como na primeira instalação; cobre fabricantes (MIUI em especial) que revogam a permissão de início automático durante atualizações do app; na primeira instalação (`last_version_code == 0`), nenhum reset ocorre
+
 ### v0.2.2 (2026-05-18)
 - **feat:** "Número desconhecido" exibido no histórico para qualquer número não apresentável (vazio, "-1" ou "unknown"), independente de quem processou a chamada
 - **feat:** campo `handledByApp` em `CallHistoryItem`; o histórico exibe "· Call Guard" quando a chamada passou pelo app e "· Sistema" quando veio apenas do log do sistema
@@ -289,6 +292,7 @@ serviceWasDisabled: Boolean   (true se a chamada foi recebida com o serviço des
 | `autostart_prompt_shown` | Boolean | false | Se o onboarding de início automático já foi exibido ao usuário |
 | `autostart_configured` | Boolean | false | Se o usuário confirmou que configurou o início automático no gerenciador do fabricante |
 | `service_enabled` | Boolean | true | Estado do toggle ON/OFF de triagem; resetado para `true` a cada reinicialização do dispositivo |
+| `last_version_code` | Int | 0 | `versionCode` da última execução; usado para detectar atualização do app e re-disparar o onboarding de início automático |
 
 ### `CallLogRepository`
 Agrega duas fontes para o histórico:

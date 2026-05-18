@@ -7,6 +7,7 @@ import android.os.Build
 import android.os.PowerManager
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModel
+import com.acdcmaia.callguard.BuildConfig
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.acdcmaia.callguard.service.CallGuardForegroundService
@@ -31,6 +32,7 @@ class MainViewModel(private val app: CallGuardApp) : ViewModel() {
 
     init {
         viewModelScope.launch {
+            app.settingsRepository.resetAutostartIfUpdated(BuildConfig.VERSION_CODE)
             val shown = app.settingsRepository.autostartPromptShown.first()
             if (!shown) {
                 _needsAutostartPrompt.value = AutoStartHelper.canOpen(app)

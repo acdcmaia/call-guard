@@ -18,6 +18,7 @@ class SettingsRepository(private val context: Context) {
     private val AUTOSTART_PROMPT_SHOWN = booleanPreferencesKey("autostart_prompt_shown")
     private val AUTOSTART_CONFIGURED = booleanPreferencesKey("autostart_configured")
     private val SERVICE_ENABLED = booleanPreferencesKey("service_enabled")
+    private val LAST_VERSION_CODE = intPreferencesKey("last_version_code")
 
     val windowSeconds: Flow<Int> = context.dataStore.data.map { prefs ->
         prefs[WINDOW_SECONDS] ?: DEFAULT_WINDOW_SECONDS
@@ -57,6 +58,19 @@ class SettingsRepository(private val context: Context) {
 
     suspend fun setServiceEnabled(enabled: Boolean) {
         try { context.dataStore.edit { it[SERVICE_ENABLED] = enabled } } catch (_: IOException) { }
+    }
+
+    suspend fun resetAutostartIfUpdated(currentVersionCode: Int) {
+        try {
+            context.dataStore.edit { prefs ->
+                val stored = prefs[LAST_VERSION_CODE] ?: 0
+                if (stored != 0 && stored != currentVersionCode) {
+                    prefs[AUTOSTART_PROMPT_SHOWN] = false
+                    prefs[AUTOSTART_CONFIGURED] = false
+                }
+                prefs[LAST_VERSION_CODE] = currentVersionCode
+            }
+        } catch (_: IOException) { }
     }
 
     companion object {

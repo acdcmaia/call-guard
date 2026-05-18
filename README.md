@@ -76,6 +76,8 @@ Se o serviço de triagem for desativado pelo sistema (ex.: por um gerenciador de
 ### Início automático
 O app inicia automaticamente após a reinicialização do dispositivo. Em fabricantes com restrição de início automático (Xiaomi, Samsung, Huawei e outros), uma tela de configuração é exibida na primeira execução com atalho direto para as configurações do fabricante.
 
+Ao atualizar o app, a permissão de início automático pode ser revogada pelo fabricante. Nesse caso, a tela de configuração é exibida novamente automaticamente para que o usuário a restaure.
+
 O status do início automático também pode ser verificado em **Configurações → Início automático do aplicativo**, destacado em vermelho enquanto não estiver configurado.
 
 ### Atualizações
@@ -106,7 +108,7 @@ Em **Configurações → Sobre**, são exibidos a versão, a data de build e o d
 
 **Ultra economia de bateria (MIUI e outros):** o modo ultra mata o serviço de notificação. O ícone e as mensagens são restaurados automaticamente na próxima chamada recebida, sem necessidade de abrir o app.
 
-**Início automático em MIUI, Samsung, Huawei e outros:** alguns fabricantes bloqueiam o início automático de aplicativos após reinicialização. O app exibe uma tela de configuração na primeira execução com atalho para as configurações do fabricante. Sem essa configuração, o serviço de triagem não inicia automaticamente após reiniciar o dispositivo.
+**Início automático em MIUI, Samsung, Huawei e outros:** alguns fabricantes bloqueiam o início automático de aplicativos após reinicialização ou atualização. O app exibe a tela de configuração na primeira execução e após cada atualização do app, com atalho para as configurações do fabricante. Sem essa configuração, o serviço de triagem não inicia automaticamente após reiniciar o dispositivo.
 
 **Family Link: restrição de uso:** em dispositivos supervisionados pelo Google Family Link, quando o dispositivo entra em restrição de uso (limite de tempo atingido ou horário configurado), o sistema suspende o app e revoga a autorização de triagem de chamadas. Durante esse período, chamadas são recebidas sem triagem. Esta é uma limitação do Android sem solução do lado do app.
 
