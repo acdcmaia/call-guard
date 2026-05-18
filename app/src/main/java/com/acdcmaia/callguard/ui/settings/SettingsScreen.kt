@@ -27,8 +27,11 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.material3.LocalContentColor
+import android.widget.Toast
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.window.PopupPositionProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -55,6 +58,8 @@ fun SettingsScreen() {
     val windowHelpTooltipState = rememberTooltipState(isPersistent = true)
     val windowHelpScope = rememberCoroutineScope()
     var showAbout by remember { mutableStateOf(false) }
+    val pixTooltipState = rememberTooltipState(isPersistent = true)
+    val clipboardManager = LocalClipboardManager.current
     val uriHandler = LocalUriHandler.current
 
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { vm.checkForUpdates() }
@@ -120,11 +125,6 @@ fun SettingsScreen() {
             )
             HorizontalDivider()
         }
-        ListItem(
-            headlineContent = { Text("Sobre") },
-            leadingContent = { Icon(Icons.Default.Info, contentDescription = null) },
-            modifier = Modifier.clickable { showAbout = true }
-        )
         val isDownloading = updateStatus == UpdateStatus.DOWNLOADING || updateStatus == UpdateStatus.READY_TO_INSTALL
         ListItem(
             headlineContent = {
@@ -158,6 +158,30 @@ fun SettingsScreen() {
                         }
                     }
                     else -> uriHandler.openUri("https://github.com/acdcmaia/call-guard/releases")
+                }
+            }
+        )
+        HorizontalDivider()
+        ListItem(
+            headlineContent = { Text("Sobre") },
+            trailingContent = { Icon(Icons.Default.Info, contentDescription = null) },
+            modifier = Modifier.clickable { showAbout = true }
+        )
+        ListItem(
+            headlineContent = { Text("Pague-me um café...") },
+            trailingContent = {
+                TooltipBox(
+                    positionProvider = TooltipDefaults.rememberTooltipPositionProvider(TooltipAnchorPosition.Above),
+                    tooltip = { RichTooltip { Text("Gostou? Pix: pix2maia@gmail.com") } },
+                    state = pixTooltipState
+                ) {
+                    IconButton(onClick = {
+                        clipboardManager.setText(AnnotatedString("pix2maia@gmail.com"))
+                        windowHelpScope.launch { pixTooltipState.show() }
+                        Toast.makeText(context, "Copiado!", Toast.LENGTH_SHORT).show()
+                    }) {
+                        Icon(Icons.Default.Info, contentDescription = null, modifier = Modifier.size(18.dp))
+                    }
                 }
             }
         )

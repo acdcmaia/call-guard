@@ -8,6 +8,10 @@ Aplicativo Android de triagem de chamadas. Bloqueia automaticamente chamadas de 
 
 ## Histórico de versões
 
+### v0.2.5 (2026-05-18)
+- **feat:** campo de contribuição via Pix na tela de Configurações, abaixo de "Sobre"; ícone "i" ao final da linha exibe o dado de contato em tooltip e o copia automaticamente para a área de transferência com confirmação via Toast
+- **feat:** reordenação dos itens finais da tela de Configurações: "Verificar atualizações" precede "Sobre"; divisor adicionado entre os dois; ícone "i" de "Sobre" movido para o final da linha
+
 ### v0.2.4 (2026-05-18)
 - **feat:** novo ícone de launcher: escudo branco com contorno preto fino e ícone de telefone vermelho (`#D32F2F`) centralizado; arquivo fonte em `callguard_icon.svg` na raiz do projeto
 
