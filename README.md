@@ -1,6 +1,6 @@
 # Call Guard
 
-Call Guard é um aplicativo Android de triagem de chamadas. O princípio é simples: robôs de telemarketing e spam trocam de número a cada tentativa, enquanto pessoas reais ligam do mesmo número. Com base nisso, o app bloqueia qualquer número desconhecido na primeira chamada, e só permite a ligação se o mesmo número chamador se repetir dentro de uma janela de tempo configurável, sinalizando que é um chamador legítimo. Números salvos na agenda do dispositivo são sempre permitidos. Além disso, o app permite criar uma lista negra por sequência numérica: qualquer chamada cujo número contenha a sequência configurada é rejeitada imediatamente.
+Call Guard é um aplicativo Android de triagem de chamadas. A regra central é simples: chamadas de números desconhecidos só são atendidas se o mesmo número ligar mais de uma vez dentro de uma janela de tempo configurável. Robôs de telemarketing e spam trocam de número a cada tentativa; pessoas reais não. Além disso, chamadas com número oculto são sempre bloqueadas, números da agenda são sempre permitidos e o app aceita uma lista negra por sequência numérica para bloqueio imediato. A triagem pode ser desativada a qualquer momento por um toggle nas Configurações.
 
 ## Como funciona
 
