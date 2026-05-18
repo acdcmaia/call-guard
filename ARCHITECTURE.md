@@ -8,6 +8,9 @@ Aplicativo Android de triagem de chamadas. Bloqueia automaticamente chamadas de 
 
 ## Histórico de versões
 
+### v0.2.4 (2026-05-18)
+- **feat:** novo ícone de launcher: escudo branco com contorno preto fino e ícone de telefone vermelho (`#D32F2F`) centralizado; arquivo fonte em `callguard_icon.svg` na raiz do projeto
+
 ### v0.2.3 (2026-05-18)
 - **fix:** ao detectar mudança de `versionCode` (via chave `last_version_code` no DataStore), reseta `autostart_prompt_shown` e `autostart_configured` para `false`, re-disparando o onboarding de início automático como na primeira instalação; cobre fabricantes (MIUI em especial) que revogam a permissão de início automático durante atualizações do app; cobre também upgrades de versões anteriores que não gravavam `last_version_code` (nesses casos `stored == 0`, que difere do `versionCode` atual e dispara o reset normalmente)
 
