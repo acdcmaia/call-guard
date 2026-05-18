@@ -87,6 +87,9 @@ Em **Configurações → Verificar atualizações**, o app consulta automaticame
 ### Sobre
 Em **Configurações → Sobre**, são exibidos a versão, a data de build e o desenvolvedor.
 
+### Contribuição
+Em **Configurações**, toque no campo **Gostou** ou no ícone "?" ao lado para exibir o dado de contribuição via Pix. O campo é recolhido automaticamente ao sair da aba.
+
 ## Compilação do projeto
 
 **Pré-requisitos:**

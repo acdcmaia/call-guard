@@ -8,7 +8,8 @@ import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.automirrored.outlined.HelpOutline
@@ -58,11 +59,14 @@ fun SettingsScreen() {
     val windowHelpTooltipState = rememberTooltipState(isPersistent = true)
     val windowHelpScope = rememberCoroutineScope()
     var showAbout by remember { mutableStateOf(false) }
-    val pixTooltipState = rememberTooltipState(isPersistent = true)
+    var showPixInfo by remember { mutableStateOf(false) }
     val clipboardManager = LocalClipboardManager.current
     val uriHandler = LocalUriHandler.current
 
-    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { vm.checkForUpdates() }
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
+        vm.checkForUpdates()
+        showPixInfo = false
+    }
 
     LaunchedEffect(apkUri) {
         apkUri?.let { uri ->
@@ -92,7 +96,7 @@ fun SettingsScreen() {
         ListItem(
             headlineContent = {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("Janela de tempo")
+                    Text("Janela de tempo: ${if (windowSeconds == 1) "1 segundo" else "$windowSeconds segundos"}")
                     TooltipBox(
                         positionProvider = TooltipDefaults.rememberTooltipPositionProvider(TooltipAnchorPosition.Above),
                         tooltip = {
@@ -103,21 +107,37 @@ fun SettingsScreen() {
                         state = windowHelpTooltipState
                     ) {
                         IconButton(onClick = { windowHelpScope.launch { windowHelpTooltipState.show() } }) {
-                            Icon(Icons.AutoMirrored.Outlined.HelpOutline, contentDescription = null,
-                                modifier = Modifier.size(18.dp))
+                            Icon(
+                                Icons.AutoMirrored.Outlined.HelpOutline,
+                                contentDescription = null,
+                                modifier = Modifier.size(24.dp)
+                            )
                         }
                     }
                 }
             },
-            supportingContent = { Text(if (windowSeconds == 1) "1 segundo" else "$windowSeconds segundos") },
             modifier = Modifier.clickable { showDialog = true }
         )
         HorizontalDivider()
         if (autostartSupported) {
             val autostartColor = if (autostartConfigured) Color.Unspecified else Color.Red
             ListItem(
-                headlineContent = { Text("Início automático do aplicativo", color = autostartColor) },
-                leadingContent = { Icon(Icons.Default.Settings, contentDescription = null, tint = if (autostartConfigured) LocalContentColor.current else Color.Red) },
+                headlineContent = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("Início automático do aplicativo", color = autostartColor)
+                        IconButton(onClick = {
+                            AutoStartHelper.open(context)
+                            vm.markAutostartConfigured()
+                        }) {
+                            Icon(
+                                Icons.Default.Settings,
+                                contentDescription = null,
+                                tint = if (autostartConfigured) LocalContentColor.current else Color.Red,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
+                    }
+                },
                 modifier = Modifier.clickable {
                     AutoStartHelper.open(context)
                     vm.markAutostartConfigured()
@@ -128,23 +148,46 @@ fun SettingsScreen() {
         val isDownloading = updateStatus == UpdateStatus.DOWNLOADING || updateStatus == UpdateStatus.READY_TO_INSTALL
         ListItem(
             headlineContent = {
-                when (updateStatus) {
-                    UpdateStatus.CHECKING -> Text("Verificando atualizações…")
-                    UpdateStatus.UP_TO_DATE -> Text("Sem atualizações a fazer")
-                    UpdateStatus.UPDATE_AVAILABLE -> Text("Atualização disponível!", color = Color.Red)
-                    UpdateStatus.ERROR -> Text("Não foi possível verificar atualizações")
-                    UpdateStatus.DOWNLOADING -> Column {
-                        Text("Baixando atualização… $downloadProgress%")
-                        LinearProgressIndicator(
-                            progress = { downloadProgress / 100f },
-                            modifier = Modifier.fillMaxWidth().padding(top = 6.dp)
-                        )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(modifier = Modifier.weight(1f, fill = false)) {
+                        when (updateStatus) {
+                            UpdateStatus.CHECKING -> Text("Verificando atualizações…")
+                            UpdateStatus.UP_TO_DATE -> Text("Sem atualizações a fazer")
+                            UpdateStatus.UPDATE_AVAILABLE -> Text("Atualização disponível!", color = Color.Red)
+                            UpdateStatus.ERROR -> Text("Não foi possível verificar atualizações")
+                            UpdateStatus.DOWNLOADING -> Column {
+                                Text("Baixando atualização… $downloadProgress%")
+                                LinearProgressIndicator(
+                                    progress = { downloadProgress / 100f },
+                                    modifier = Modifier.fillMaxWidth().padding(top = 6.dp)
+                                )
+                            }
+                            UpdateStatus.READY_TO_INSTALL -> Text("Abrindo instalador…")
+                            UpdateStatus.DOWNLOAD_ERROR -> Text("Erro ao baixar atualização", color = Color.Red)
+                        }
                     }
-                    UpdateStatus.READY_TO_INSTALL -> Text("Abrindo instalador…")
-                    UpdateStatus.DOWNLOAD_ERROR -> Text("Erro ao baixar atualização", color = Color.Red)
+                    IconButton(
+                        onClick = {
+                            when (updateStatus) {
+                                UpdateStatus.UPDATE_AVAILABLE, UpdateStatus.DOWNLOAD_ERROR -> {
+                                    if (!context.packageManager.canRequestPackageInstalls()) {
+                                        val intent = Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES).apply {
+                                            data = Uri.parse("package:${context.packageName}")
+                                        }
+                                        context.startActivity(intent)
+                                    } else {
+                                        vm.downloadUpdate(context)
+                                    }
+                                }
+                                else -> uriHandler.openUri("https://github.com/acdcmaia/call-guard/releases")
+                            }
+                        },
+                        enabled = !isDownloading
+                    ) {
+                        Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(24.dp))
+                    }
                 }
             },
-            leadingContent = { Icon(Icons.Default.Refresh, contentDescription = null) },
             modifier = Modifier.clickable(enabled = !isDownloading) {
                 when (updateStatus) {
                     UpdateStatus.UPDATE_AVAILABLE, UpdateStatus.DOWNLOAD_ERROR -> {
@@ -163,27 +206,53 @@ fun SettingsScreen() {
         )
         HorizontalDivider()
         ListItem(
-            headlineContent = { Text("Sobre") },
-            trailingContent = { Icon(Icons.Default.Info, contentDescription = null) },
+            headlineContent = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("Sobre")
+                    IconButton(onClick = { showAbout = true }) {
+                        Icon(Icons.Outlined.Info, contentDescription = null, modifier = Modifier.size(24.dp))
+                    }
+                }
+            },
             modifier = Modifier.clickable { showAbout = true }
         )
         ListItem(
-            headlineContent = { Text("Pague-me um café...") },
-            trailingContent = {
-                TooltipBox(
-                    positionProvider = TooltipDefaults.rememberTooltipPositionProvider(TooltipAnchorPosition.Above),
-                    tooltip = { RichTooltip { Text("Gostou? Pix: pix2maia@gmail.com") } },
-                    state = pixTooltipState
-                ) {
-                    IconButton(onClick = {
-                        clipboardManager.setText(AnnotatedString("pix2maia@gmail.com"))
-                        windowHelpScope.launch { pixTooltipState.show() }
-                        Toast.makeText(context, "Copiado!", Toast.LENGTH_SHORT).show()
-                    }) {
-                        Icon(Icons.Default.Info, contentDescription = null, modifier = Modifier.size(18.dp))
+            headlineContent = {
+                Column {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("Gostou")
+                        IconButton(onClick = { showPixInfo = !showPixInfo }) {
+                            Icon(
+                                Icons.AutoMirrored.Outlined.HelpOutline,
+                                contentDescription = null,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
+                    }
+                    if (showPixInfo) {
+                        Column(modifier = Modifier.padding(start = 16.dp)) {
+                            Text("Pague-me um café... 😊")
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    "Pix: pix2maia@gmail.com",
+                                    modifier = Modifier.weight(1f, fill = false)
+                                )
+                                IconButton(onClick = {
+                                    clipboardManager.setText(AnnotatedString("pix2maia@gmail.com"))
+                                    Toast.makeText(context, "Copiado!", Toast.LENGTH_SHORT).show()
+                                }) {
+                                    Icon(
+                                        Icons.Default.ContentCopy,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
-            }
+            },
+            modifier = Modifier.clickable { showPixInfo = !showPixInfo }
         )
     }
 

@@ -8,6 +8,11 @@ Aplicativo Android de triagem de chamadas. Bloqueia automaticamente chamadas de 
 
 ## Histórico de versões
 
+### v0.2.6 (2026-05-18)
+- **refactor:** tela de Configurações: todos os ícones ("?", "i", "copy") padronizados como `IconButton` (40 dp de área de toque) com ícone interno de 24 dp, estilo outlined; ícones de "Início automático" e "Verificar atualizações" movidos de `leadingContent` para inline após o texto no `headlineContent`; ícone "?" da aba Lista Negra (`TopAppBar`) ajustado para 24 dp
+- **feat:** campo "Gostou" na tela de Configurações: campo de contribuição via Pix com toggle controlado por toque no campo ou no ícone "?"; exibe texto informativo com emoji e botão de cópia ao expandir; campo recolhido automaticamente ao retornar à aba (`LifecycleEventEffect(ON_RESUME)`)
+- **fix:** valor da janela de tempo exibido inline com o label ("Janela de tempo: 120 segundos"), eliminando a linha de suporte separada
+
 ### v0.2.5 (2026-05-18)
 - **feat:** campo de contribuição via Pix na tela de Configurações, abaixo de "Sobre"; ícone "i" ao final da linha exibe o dado de contato em tooltip e o copia automaticamente para a área de transferência com confirmação via Toast
 - **feat:** reordenação dos itens finais da tela de Configurações: "Verificar atualizações" precede "Sobre"; divisor adicionado entre os dois; ícone "i" de "Sobre" movido para o final da linha
