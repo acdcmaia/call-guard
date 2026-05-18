@@ -64,7 +64,7 @@ class SettingsRepository(private val context: Context) {
         try {
             context.dataStore.edit { prefs ->
                 val stored = prefs[LAST_VERSION_CODE] ?: 0
-                if (stored != 0 && stored != currentVersionCode) {
+                if (stored != currentVersionCode) {
                     prefs[AUTOSTART_PROMPT_SHOWN] = false
                     prefs[AUTOSTART_CONFIGURED] = false
                 }
