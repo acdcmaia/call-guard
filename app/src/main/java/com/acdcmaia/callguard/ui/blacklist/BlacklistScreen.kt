@@ -9,7 +9,9 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.automirrored.outlined.HelpOutline
 import androidx.compose.material3.*
+import androidx.compose.ui.Alignment
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
@@ -36,9 +38,33 @@ fun BlacklistScreen() {
     val patterns by vm.patterns.collectAsStateWithLifecycle(initialValue = emptyList())
     var showAddDialog by remember { mutableStateOf(false) }
     var editTarget by remember { mutableStateOf<BlacklistPattern?>(null) }
+    val helpTooltipState = rememberTooltipState(isPersistent = true)
+    val helpScope = rememberCoroutineScope()
 
     Scaffold(
-        topBar = { TopAppBar(title = { Text("Lista Negra") }) },
+        topBar = {
+            TopAppBar(
+                title = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("Lista Negra")
+                        TooltipBox(
+                            positionProvider = TooltipDefaults.rememberTooltipPositionProvider(TooltipAnchorPosition.Above),
+                            tooltip = {
+                                RichTooltip {
+                                    Text("Sequência de dígitos que apareça em qualquer parte do número chamador. Ex.: '91234' bloqueia chamadas de '021912345678'")
+                                }
+                            },
+                            state = helpTooltipState
+                        ) {
+                            IconButton(onClick = { helpScope.launch { helpTooltipState.show() } }) {
+                                Icon(Icons.AutoMirrored.Outlined.HelpOutline, contentDescription = null,
+                                    modifier = Modifier.size(18.dp))
+                            }
+                        }
+                    }
+                }
+            )
+        },
         floatingActionButton = {
             FloatingActionButton(onClick = { showAddDialog = true }) {
                 Icon(Icons.Default.Add, contentDescription = "Adicionar")

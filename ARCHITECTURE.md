@@ -8,6 +8,12 @@ Aplicativo Android de triagem de chamadas. Bloqueia automaticamente chamadas de 
 
 ## Histórico de versões
 
+### v0.2.2 (2026-05-18)
+- **feat:** "Número desconhecido" exibido no histórico para qualquer número não apresentável (vazio, "-1" ou "unknown"), independente de quem processou a chamada
+- **feat:** campo `handledByApp` em `CallHistoryItem`; o histórico exibe "· Call Guard" quando a chamada passou pelo app e "· Sistema" quando veio apenas do log do sistema
+- **feat:** layout de duas linhas no histórico: status e atribuição na primeira linha, timestamp na segunda
+- **feat:** ícone "?" ao lado de "Lista Negra" (no `TopAppBar`) e "Janela de tempo" (no `ListItem`), via `TooltipBox` com `TooltipAnchorPosition.Above`; o texto de ajuda existente é exibido ao toque
+
 ### v0.2.1 (2026-05-17)
 - **feat:** toggle ON/OFF na tela de Configurações ("Habilitar Call Guard"); quando desligado, o serviço permanece ativo mas responde com permitir a todas as chamadas; chamadas recebidas com serviço desligado são gravadas no Room com `serviceWasDisabled = true`; notificação persistente exibida em cinza via `CHANNEL_DISABLED`
 - **feat:** ao reativar o serviço, `seenBlockedCount` é atualizado para o total atual de chamadas bloqueadas, garantindo que a notificação volte ao estado verde independente do estado anterior ao desligamento
@@ -289,7 +295,7 @@ Agrega duas fontes para o histórico:
 1. **Log do sistema** (`CallLog.Calls`): chamadas registradas pelo Android, excluindo efetuadas (`OUTGOING_TYPE`) diretamente no `selection` do `ContentResolver.query()`; `LIMIT` aplicado via contador no cursor (não no sortOrder, pois MIUI rejeita SQL não padrão nesse parâmetro)
 2. **Room** (`recent_calls`): chamadas processadas pelo app
 
-Para cada entrada, resolve o nome do contato via `ContactsRepository.getContactName()`. Entradas do Room sem correspondência no log do sistema (chamadas bloqueadas ainda não registradas pelo Android) aparecem imediatamente como `appOnly = true`, garantindo atualização em tempo real.
+Para cada entrada, resolve o nome do contato via `ContactsRepository.getContactName()`. Entradas do Room sem correspondência no log do sistema (chamadas bloqueadas ainda não registradas pelo Android) aparecem imediatamente como `appOnly = true`, garantindo atualização em tempo real. Entradas do log do sistema com correspondência no Room recebem `handledByApp = true`; entradas sem correspondência (apenas no log do sistema, sem processamento pelo app) recebem `handledByApp = false`. Entradas Room-only recebem `handledByApp = true`.
 
 ### `CallHistoryItem`
 Modelo de exibição do histórico. Campos relevantes:
@@ -303,6 +309,7 @@ Modelo de exibição do histórico. Campos relevantes:
 | `blockReason` | BlockReason? | Motivo do bloqueio, ou null se permitida |
 | `appOnly` | Boolean | True para bloqueadas ainda não no log do sistema |
 | `serviceWasDisabled` | Boolean | True se a chamada foi recebida com o serviço desligado |
+| `handledByApp` | Boolean | True quando a chamada foi processada pelo app; false quando veio apenas do log do sistema |
 
 ---
 
@@ -466,6 +473,8 @@ O `StateFlow` de histórico cancela a coleta 5 segundos após a última UI sair 
 O Material3 `TooltipDefaults` não expõe controle de posição vertical. É usado um `PopupPositionProvider` customizado em dois contextos:
 - **Lista Negra** ("Sequência de dígitos"): posicionado abaixo do campo (`anchorBounds.bottom`)
 - **Configurações** (dialog "Janela de tempo"): posicionado acima do campo (`anchorBounds.top - popupContentSize.height`), exibido automaticamente ao focar o campo
+
+Os ícones "?" ao lado dos títulos "Lista Negra" (no `TopAppBar`) e "Janela de tempo" (no `ListItem`) usam `TooltipDefaults.rememberTooltipPositionProvider(TooltipAnchorPosition.Above)`, o provider padrão do Material3 posicionado acima do ícone âncora.
 
 **`SettingsScreen` baseada em dialog**
 O campo de texto para janela de tempo foi substituído por um `ListItem` clicável que abre um `AlertDialog` com o campo e botões Cancelar/Salvar, idêntico ao padrão da Lista Negra. Elimina problemas de salvamento dependente de foco (o valor só é persistido ao confirmar o dialog).

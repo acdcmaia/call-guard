@@ -72,24 +72,23 @@ private fun CallHistoryRow(item: CallHistoryItem) {
         else -> "Liberada"
     }
 
+    val attribution = if (item.handledByApp) " · Call Guard" else " · Sistema"
     val statusLabel = when {
         item.serviceWasDisabled -> "Permitida (serviço desligado)"
         item.blockReason == BlockReason.BLACKLIST -> "Bloqueada (lista negra): ${item.matchedPatternLabel}"
         item.blockReason == BlockReason.FIRST_CALL -> "Bloqueada (1ª chamada)"
         item.blockReason == BlockReason.HIDDEN_NUMBER -> "Bloqueada (número oculto)"
         else -> typeLabel
-    }
+    } + attribution
 
     val isBlocked = !item.serviceWasDisabled && (item.blockReason != null || item.callType == CallLog.Calls.BLOCKED_TYPE)
     val textColor = if (isBlocked) Color.Red else Color.Unspecified
 
     ListItem(
         headlineContent = {
-            val displayNumber = when {
-                item.blockReason == BlockReason.HIDDEN_NUMBER -> "Número oculto"
-                item.serviceWasDisabled && item.number.isEmpty() -> "Número oculto"
-                else -> item.number
-            }
+            val displayNumber = if (item.number.isNotEmpty() && item.number != "-1"
+                && !item.number.equals("unknown", ignoreCase = true))
+                item.number else "Número desconhecido"
             if (item.contactName != null) {
                 Column {
                     Text(item.contactName, color = textColor)
@@ -104,11 +103,10 @@ private fun CallHistoryRow(item: CallHistoryItem) {
             }
         },
         supportingContent = {
-            Text(
-                "$statusLabel · $formattedDate",
-                color = textColor,
-                style = MaterialTheme.typography.bodySmall
-            )
+            Column {
+                Text(statusLabel, color = textColor, style = MaterialTheme.typography.bodySmall)
+                Text(formattedDate, color = textColor, style = MaterialTheme.typography.bodySmall)
+            }
         },
         modifier = Modifier.padding(vertical = 2.dp)
     )

@@ -11,5 +11,6 @@ data class CallHistoryItem(
     val matchedPatternLabel: String?,
     val blockReason: BlockReason?,
     val appOnly: Boolean = false,
-    val serviceWasDisabled: Boolean = false
+    val serviceWasDisabled: Boolean = false,
+    val handledByApp: Boolean = false
 )

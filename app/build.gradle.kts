@@ -35,8 +35,8 @@ android {
         applicationId = "com.acdcmaia.callguard"
         minSdk = 29
         targetSdk = 36
-        versionCode = 21
-        versionName = "0.2.1"
+        versionCode = 22
+        versionName = "0.2.2"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField("String", "BUILD_DATE", "\"$buildDate\"")
@@ -106,6 +106,7 @@ dependencies {
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.compose.material.icons.core)
+    implementation(libs.androidx.compose.material.icons.extended)
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
     ksp(libs.androidx.room.compiler)

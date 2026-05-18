@@ -11,6 +11,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.automirrored.outlined.HelpOutline
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
@@ -50,6 +52,8 @@ fun SettingsScreen() {
     val serviceEnabled by vm.serviceEnabled.collectAsStateWithLifecycle(initialValue = true)
     val autostartSupported = remember { AutoStartHelper.canOpen(context) }
     var showDialog by remember { mutableStateOf(false) }
+    val windowHelpTooltipState = rememberTooltipState(isPersistent = true)
+    val windowHelpScope = rememberCoroutineScope()
     var showAbout by remember { mutableStateOf(false) }
     val uriHandler = LocalUriHandler.current
 
@@ -81,7 +85,25 @@ fun SettingsScreen() {
         )
         HorizontalDivider()
         ListItem(
-            headlineContent = { Text("Janela de tempo") },
+            headlineContent = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("Janela de tempo")
+                    TooltipBox(
+                        positionProvider = TooltipDefaults.rememberTooltipPositionProvider(TooltipAnchorPosition.Above),
+                        tooltip = {
+                            RichTooltip {
+                                Text("Chamadas do mesmo número repetidas dentro deste período serão encaminhadas.")
+                            }
+                        },
+                        state = windowHelpTooltipState
+                    ) {
+                        IconButton(onClick = { windowHelpScope.launch { windowHelpTooltipState.show() } }) {
+                            Icon(Icons.AutoMirrored.Outlined.HelpOutline, contentDescription = null,
+                                modifier = Modifier.size(18.dp))
+                        }
+                    }
+                }
+            },
             supportingContent = { Text(if (windowSeconds == 1) "1 segundo" else "$windowSeconds segundos") },
             modifier = Modifier.clickable { showDialog = true }
         )
