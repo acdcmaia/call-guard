@@ -18,7 +18,7 @@ import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.async
 import java.io.File
 import java.net.URL
 
@@ -58,7 +58,7 @@ class SettingsViewModel(private val settings: SettingsRepository) : ViewModel() 
         updateJob = viewModelScope.launch {
             _updateStatus.value = UpdateStatus.CHECKING
             try {
-                val (latest, url) = withContext(Dispatchers.IO) {
+                val fetchDeferred = async(Dispatchers.IO) {
                     val json = URL("https://api.github.com/repos/acdcmaia/call-guard/releases/latest").readText()
                     val tag = Regex("\"tag_name\"\\s*:\\s*\"v?([^\"]+)\"").find(json)
                         ?.groupValues?.get(1) ?: error("tag_name não encontrado")
@@ -66,6 +66,8 @@ class SettingsViewModel(private val settings: SettingsRepository) : ViewModel() 
                         ?.groupValues?.get(1)
                     Pair(tag, apkUrl)
                 }
+                delay(MIN_CHECKING_DURATION_MS)
+                val (latest, url) = fetchDeferred.await()
                 downloadUrl = url
                 _updateStatus.value = if (isNewer(latest, BuildConfig.VERSION_NAME))
                     UpdateStatus.UPDATE_AVAILABLE else UpdateStatus.UP_TO_DATE
@@ -138,6 +140,8 @@ class SettingsViewModel(private val settings: SettingsRepository) : ViewModel() 
     }
 
     companion object {
+        private const val MIN_CHECKING_DURATION_MS = 2_000L
+
         private fun isNewer(remote: String, local: String): Boolean {
             val r = remote.split(".").map { it.toIntOrNull() ?: 0 }
             val l = local.split(".").map { it.toIntOrNull() ?: 0 }
