@@ -8,6 +8,9 @@ Aplicativo Android de triagem de chamadas. Bloqueia automaticamente chamadas de 
 
 ## Histórico de versões
 
+### v0.2.7 (2026-05-18)
+- **feat:** tela de Configurações, campo de atualizações: no estado `UP_TO_DATE`, clicar no ícone de refresh reexecuta a verificação (`checkForUpdates()`); clicar no texto continua abrindo o GitHub releases
+
 ### v0.2.6 (2026-05-18)
 - **refactor:** tela de Configurações: todos os ícones ("?", "i", "copy") padronizados como `IconButton` (40 dp de área de toque) com ícone interno de 24 dp, estilo outlined; ícones de "Início automático" e "Verificar atualizações" movidos de `leadingContent` para inline após o texto no `headlineContent`; ícone "?" da aba Lista Negra (`TopAppBar`) ajustado para 24 dp
 - **feat:** campo "Gostou" na tela de Configurações: campo de contribuição via Pix com toggle controlado por toque no campo ou no ícone "?"; exibe texto informativo com emoji e botão de cópia ao expandir; campo recolhido automaticamente ao retornar à aba (`LifecycleEventEffect(ON_RESUME)`)

@@ -179,6 +179,7 @@ fun SettingsScreen() {
                                         vm.downloadUpdate(context)
                                     }
                                 }
+                                UpdateStatus.UP_TO_DATE -> vm.checkForUpdates()
                                 else -> uriHandler.openUri("https://github.com/acdcmaia/call-guard/releases")
                             }
                         },
