@@ -151,7 +151,7 @@ fun SettingsScreen() {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Box(modifier = Modifier.weight(1f, fill = false)) {
                         when (updateStatus) {
-                            UpdateStatus.CHECKING -> Text("Verificando atualizações…")
+                            UpdateStatus.CHECKING -> Text("Verificando atualizações")
                             UpdateStatus.UP_TO_DATE -> Text("Sem atualizações a fazer")
                             UpdateStatus.UPDATE_AVAILABLE -> Text("Atualização disponível!", color = Color.Red)
                             UpdateStatus.ERROR -> Text("Não foi possível verificar atualizações")
@@ -183,9 +183,13 @@ fun SettingsScreen() {
                                 else -> uriHandler.openUri("https://github.com/acdcmaia/call-guard/releases")
                             }
                         },
-                        enabled = !isDownloading
+                        enabled = !isDownloading && updateStatus != UpdateStatus.CHECKING
                     ) {
-                        Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(24.dp))
+                        if (updateStatus == UpdateStatus.CHECKING) {
+                            CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
+                        } else {
+                            Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(24.dp))
+                        }
                     }
                 }
             },
