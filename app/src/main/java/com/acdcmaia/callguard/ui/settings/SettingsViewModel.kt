@@ -19,6 +19,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.async
+import kotlinx.coroutines.supervisorScope
 import java.io.File
 import java.net.URL
 
@@ -58,16 +59,18 @@ class SettingsViewModel(private val settings: SettingsRepository) : ViewModel() 
         updateJob = viewModelScope.launch {
             _updateStatus.value = UpdateStatus.CHECKING
             try {
-                val fetchDeferred = async(Dispatchers.IO) {
-                    val json = URL("https://api.github.com/repos/acdcmaia/call-guard/releases/latest").readText()
-                    val tag = Regex("\"tag_name\"\\s*:\\s*\"v?([^\"]+)\"").find(json)
-                        ?.groupValues?.get(1) ?: error("tag_name não encontrado")
-                    val apkUrl = Regex(""""browser_download_url"\s*:\s*"([^"]+\.apk)"""").find(json)
-                        ?.groupValues?.get(1)
-                    Pair(tag, apkUrl)
+                val (latest, url) = supervisorScope {
+                    val fetchDeferred = async(Dispatchers.IO) {
+                        val json = URL("https://api.github.com/repos/acdcmaia/call-guard/releases/latest").readText()
+                        val tag = Regex("\"tag_name\"\\s*:\\s*\"v?([^\"]+)\"").find(json)
+                            ?.groupValues?.get(1) ?: error("tag_name não encontrado")
+                        val apkUrl = Regex(""""browser_download_url"\s*:\s*"([^"]+\.apk)"""").find(json)
+                            ?.groupValues?.get(1)
+                        Pair(tag, apkUrl)
+                    }
+                    delay(MIN_CHECKING_DURATION_MS)
+                    fetchDeferred.await()
                 }
-                delay(MIN_CHECKING_DURATION_MS)
-                val (latest, url) = fetchDeferred.await()
                 downloadUrl = url
                 _updateStatus.value = if (isNewer(latest, BuildConfig.VERSION_NAME))
                     UpdateStatus.UPDATE_AVAILABLE else UpdateStatus.UP_TO_DATE

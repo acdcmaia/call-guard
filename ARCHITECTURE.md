@@ -8,6 +8,11 @@ Aplicativo Android de triagem de chamadas. Bloqueia automaticamente chamadas de 
 
 ## Histórico de versões
 
+### v0.2.8 (2026-05-21)
+- **fix:** verificação de atualização causava crash ao ser acionada sem internet; `UnknownHostException` do `async(Dispatchers.IO)` propagava para fora do `try-catch` via `handleJobException` do coroutine e atingia o `UncaughtExceptionHandler` do processo; corrigido envolvendo `async + delay + await` em `supervisorScope`, que isola a falha do `async` e a relança apenas no `await()`, onde o `catch` externo a captura corretamente
+- **fix:** no estado `ERROR` do campo "Verificar atualizações", o ícone de refresh e o toque no item abriam o browser em vez de retentar a verificação; ambos agora chamam `checkForUpdates()`
+- **chore:** `org.gradle.configuration-cache` desativado em `gradle.properties`; incompatível com `doLast` definidos em build scripts no Gradle 9.5, descartando o cache a cada build sem benefício
+
 ### v0.2.7 (2026-05-18)
 - **feat:** tela de Configurações, campo de atualizações: no estado `UP_TO_DATE`, clicar no ícone de refresh reexecuta a verificação (`checkForUpdates()`); clicar no texto continua abrindo o GitHub releases
 - **fix:** estado `CHECKING` exibido por no mínimo 2 segundos; chamada à API e delay correm em paralelo via `async`, garantindo visibilidade da mensagem mesmo quando a resposta chega rapidamente

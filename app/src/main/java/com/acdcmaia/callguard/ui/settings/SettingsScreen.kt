@@ -179,7 +179,7 @@ fun SettingsScreen() {
                                         vm.downloadUpdate(context)
                                     }
                                 }
-                                UpdateStatus.UP_TO_DATE -> vm.checkForUpdates()
+                                UpdateStatus.UP_TO_DATE, UpdateStatus.ERROR -> vm.checkForUpdates()
                                 else -> uriHandler.openUri("https://github.com/acdcmaia/call-guard/releases")
                             }
                         },
@@ -205,6 +205,7 @@ fun SettingsScreen() {
                             vm.downloadUpdate(context)
                         }
                     }
+                    UpdateStatus.ERROR -> vm.checkForUpdates()
                     else -> uriHandler.openUri("https://github.com/acdcmaia/call-guard/releases")
                 }
             }
