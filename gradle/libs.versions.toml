@@ -13,7 +13,7 @@ datastore = "1.2.1"
 navigationCompose = "2.9.0"
 lifecycleViewmodelCompose = "2.10.0"
 workManager = "2.9.1"
-libphonenumber = "8.13.45"
+libphonenumber = "9.0.30"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
