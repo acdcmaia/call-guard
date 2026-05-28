@@ -8,6 +8,9 @@ Aplicativo Android de triagem de chamadas. Bloqueia automaticamente chamadas de 
 
 ## Histórico de versões
 
+### v0.3.0 (2026-05-28)
+- **fix:** chamadas perdidas (`MISSED_TYPE`) e rejeitadas manualmente (`REJECTED_TYPE`) exibidas como "· Call Guard" em vez de "· Sistema"; `handledByApp` era definido como `appCall != null` em `getMergedHistory()`, atribuindo o desfecho ao app mesmo quando ele foi determinado pelo usuário ou pelo sistema; corrigido excluindo `MISSED_TYPE` e `REJECTED_TYPE` da condição de `handledByApp = true`
+
 ### v0.2.9 (2026-05-28)
 - **fix:** `getMergedHistory()` em `CallLogRepository` usava `firstOrNull` para parear entradas do log do sistema com registros do Room; como `roomCalls` é ordenado do mais novo para o mais antigo, chamadas do sistema com diferença menor que 60 s entre si podiam ser emparelhadas com o registro Room errado, gerando entrada fantasma no histórico e rótulo "(1ª chamada)" fora de posição; corrigido substituindo `firstOrNull` por `filter + minByOrNull`, que seleciona o registro Room de timestamp mais próximo ao da entrada do sistema
 - **fix:** chamadas com `REJECTED_TYPE` no log do sistema (liberadas pelo app, rejeitadas manualmente pelo usuário) exibidas como "Rejeitada" em vez de "Liberada"; o tipo não estava mapeado no `when` de `typeLabel` em `RecentCallsScreen` e caía no `else`
@@ -327,7 +330,7 @@ Agrega duas fontes para o histórico:
 1. **Log do sistema** (`CallLog.Calls`): chamadas registradas pelo Android, excluindo efetuadas (`OUTGOING_TYPE`) diretamente no `selection` do `ContentResolver.query()`; `LIMIT` aplicado via contador no cursor (não no sortOrder, pois MIUI rejeita SQL não padrão nesse parâmetro)
 2. **Room** (`recent_calls`): chamadas processadas pelo app
 
-Para cada entrada, resolve o nome do contato via `ContactsRepository.getContactName()`. Entradas do Room sem correspondência no log do sistema (chamadas bloqueadas ainda não registradas pelo Android) aparecem imediatamente como `appOnly = true`, garantindo atualização em tempo real. O pareamento entre entradas do log do sistema e registros do Room é feito por `minByOrNull { abs(it.timestamp - call.timestamp) }` sobre os registros do mesmo número dentro de uma janela de 60 s; usa o registro mais próximo em tempo, evitando que chamadas consecutivas do mesmo número disputem o mesmo registro Room. Entradas do log do sistema com correspondência no Room recebem `handledByApp = true`; entradas sem correspondência (apenas no log do sistema, sem processamento pelo app) recebem `handledByApp = false`. Entradas Room-only recebem `handledByApp = true`.
+Para cada entrada, resolve o nome do contato via `ContactsRepository.getContactName()`. Entradas do Room sem correspondência no log do sistema (chamadas bloqueadas ainda não registradas pelo Android) aparecem imediatamente como `appOnly = true`, garantindo atualização em tempo real. O pareamento entre entradas do log do sistema e registros do Room é feito por `minByOrNull { abs(it.timestamp - call.timestamp) }` sobre os registros do mesmo número dentro de uma janela de 60 s; usa o registro mais próximo em tempo, evitando que chamadas consecutivas do mesmo número disputem o mesmo registro Room. Entradas do log do sistema com correspondência no Room recebem `handledByApp = true`, exceto quando o tipo for `MISSED_TYPE` (chamada perdida) ou `REJECTED_TYPE` (rejeitada manualmente pelo usuário), que recebem `handledByApp = false` independente de haver registro no Room, pois o desfecho foi determinado pelo usuário ou pelo sistema. Entradas sem correspondência no Room recebem `handledByApp = false`. Entradas Room-only recebem `handledByApp = true`.
 
 ### `CallHistoryItem`
 Modelo de exibição do histórico. Campos relevantes:
@@ -341,7 +344,7 @@ Modelo de exibição do histórico. Campos relevantes:
 | `blockReason` | BlockReason? | Motivo do bloqueio, ou null se permitida |
 | `appOnly` | Boolean | True para bloqueadas ainda não no log do sistema |
 | `serviceWasDisabled` | Boolean | True se a chamada foi recebida com o serviço desligado |
-| `handledByApp` | Boolean | True quando a chamada foi processada pelo app; false quando veio apenas do log do sistema |
+| `handledByApp` | Boolean | True quando a triagem determinou o resultado da chamada; false para chamadas perdidas, rejeitadas manualmente ou sem registro no app |
 
 ---
 

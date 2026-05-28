@@ -40,6 +40,8 @@ class CallLogRepository(
                     appOnly = false,
                     serviceWasDisabled = appCall?.serviceWasDisabled ?: false,
                     handledByApp = appCall != null
+                        && call.type != CallLog.Calls.MISSED_TYPE
+                        && call.type != CallLog.Calls.REJECTED_TYPE
                 )
             }
 
