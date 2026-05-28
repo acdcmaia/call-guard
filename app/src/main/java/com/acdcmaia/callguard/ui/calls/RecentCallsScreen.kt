@@ -69,6 +69,7 @@ private fun CallHistoryRow(item: CallHistoryItem) {
         CallLog.Calls.OUTGOING_TYPE -> "Efetuada"
         CallLog.Calls.MISSED_TYPE -> "Perdida"
         CallLog.Calls.BLOCKED_TYPE -> "Bloqueada"
+        CallLog.Calls.REJECTED_TYPE -> "Rejeitada"
         else -> "Liberada"
     }
 

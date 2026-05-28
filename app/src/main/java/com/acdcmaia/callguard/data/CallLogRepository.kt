@@ -22,9 +22,9 @@ class CallLogRepository(
 
         val systemItems = systemCalls
             .map { call ->
-                val appCall = roomCalls.firstOrNull { a ->
-                    a.number == call.number && abs(a.timestamp - call.timestamp) < 60_000L
-                }
+                val appCall = roomCalls
+                    .filter { a -> a.number == call.number && abs(a.timestamp - call.timestamp) < 60_000L }
+                    .minByOrNull { abs(it.timestamp - call.timestamp) }
                 if (appCall != null) matchedRoomIds.add(appCall.id)
                 val label = appCall?.matchedPattern?.let { p ->
                     patternLabels[p]?.takeIf { it.isNotBlank() } ?: p

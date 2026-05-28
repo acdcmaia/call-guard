@@ -8,6 +8,10 @@ Aplicativo Android de triagem de chamadas. Bloqueia automaticamente chamadas de 
 
 ## Histórico de versões
 
+### v0.2.9 (2026-05-28)
+- **fix:** `getMergedHistory()` em `CallLogRepository` usava `firstOrNull` para parear entradas do log do sistema com registros do Room; como `roomCalls` é ordenado do mais novo para o mais antigo, chamadas do sistema com diferença menor que 60 s entre si podiam ser emparelhadas com o registro Room errado, gerando entrada fantasma no histórico e rótulo "(1ª chamada)" fora de posição; corrigido substituindo `firstOrNull` por `filter + minByOrNull`, que seleciona o registro Room de timestamp mais próximo ao da entrada do sistema
+- **fix:** chamadas com `REJECTED_TYPE` no log do sistema (liberadas pelo app, rejeitadas manualmente pelo usuário) exibidas como "Rejeitada" em vez de "Liberada"; o tipo não estava mapeado no `when` de `typeLabel` em `RecentCallsScreen` e caía no `else`
+
 ### v0.2.8 (2026-05-21)
 - **fix:** verificação de atualização causava crash ao ser acionada sem internet; `UnknownHostException` do `async(Dispatchers.IO)` propagava para fora do `try-catch` via `handleJobException` do coroutine e atingia o `UncaughtExceptionHandler` do processo; corrigido envolvendo `async + delay + await` em `supervisorScope`, que isola a falha do `async` e a relança apenas no `await()`, onde o `catch` externo a captura corretamente
 - **fix:** no estado `ERROR` do campo "Verificar atualizações", o ícone de refresh e o toque no item abriam o browser em vez de retentar a verificação; ambos agora chamam `checkForUpdates()`
@@ -323,7 +327,7 @@ Agrega duas fontes para o histórico:
 1. **Log do sistema** (`CallLog.Calls`): chamadas registradas pelo Android, excluindo efetuadas (`OUTGOING_TYPE`) diretamente no `selection` do `ContentResolver.query()`; `LIMIT` aplicado via contador no cursor (não no sortOrder, pois MIUI rejeita SQL não padrão nesse parâmetro)
 2. **Room** (`recent_calls`): chamadas processadas pelo app
 
-Para cada entrada, resolve o nome do contato via `ContactsRepository.getContactName()`. Entradas do Room sem correspondência no log do sistema (chamadas bloqueadas ainda não registradas pelo Android) aparecem imediatamente como `appOnly = true`, garantindo atualização em tempo real. Entradas do log do sistema com correspondência no Room recebem `handledByApp = true`; entradas sem correspondência (apenas no log do sistema, sem processamento pelo app) recebem `handledByApp = false`. Entradas Room-only recebem `handledByApp = true`.
+Para cada entrada, resolve o nome do contato via `ContactsRepository.getContactName()`. Entradas do Room sem correspondência no log do sistema (chamadas bloqueadas ainda não registradas pelo Android) aparecem imediatamente como `appOnly = true`, garantindo atualização em tempo real. O pareamento entre entradas do log do sistema e registros do Room é feito por `minByOrNull { abs(it.timestamp - call.timestamp) }` sobre os registros do mesmo número dentro de uma janela de 60 s; usa o registro mais próximo em tempo, evitando que chamadas consecutivas do mesmo número disputem o mesmo registro Room. Entradas do log do sistema com correspondência no Room recebem `handledByApp = true`; entradas sem correspondência (apenas no log do sistema, sem processamento pelo app) recebem `handledByApp = false`. Entradas Room-only recebem `handledByApp = true`.
 
 ### `CallHistoryItem`
 Modelo de exibição do histórico. Campos relevantes:
