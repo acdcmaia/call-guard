@@ -59,7 +59,7 @@ Em **Lista Negra**, adicione sequências de dígitos. Qualquer chamada cujo núm
 > Ex.: a sequência `91234` bloqueia chamadas de `02191234...`
 
 ### Histórico
-Em **Chamadas**, constam os registros de chamadas liberadas e bloqueadas (chamadas efetuadas não são exibidas). Para contatos salvos na agenda, o nome é exibido junto ao número. Chamadas bloqueadas aparecem em vermelho. Cada registro indica quem determinou o resultado da chamada: "· Call Guard" quando a triagem do app foi o fator decisivo, ou "· Sistema" quando o resultado foi determinado pelo usuário ou pelo sistema (chamadas perdidas, rejeitadas manualmente ou registradas apenas no log do sistema). Números sem identificação de origem são exibidos como "Número desconhecido".
+Em **Chamadas**, constam os registros de chamadas liberadas e bloqueadas (chamadas efetuadas não são exibidas). Para contatos salvos na agenda, o nome é exibido junto ao número. Chamadas bloqueadas pelo app aparecem em vermelho; chamadas perdidas ou rejeitadas manualmente aparecem em laranja. Cada registro indica quem determinou o resultado da chamada: "· Call Guard" quando a triagem do app foi o fator decisivo, ou "· Sistema" quando o resultado foi determinado pelo usuário ou pelo sistema (chamadas perdidas, rejeitadas manualmente ou registradas apenas no log do sistema). Números sem identificação de origem são exibidos como "Número desconhecido".
 
 ### Notificação persistente
 O app mantém uma notificação ativa enquanto o serviço de triagem estiver em execução:

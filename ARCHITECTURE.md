@@ -8,6 +8,9 @@ Aplicativo Android de triagem de chamadas. Bloqueia automaticamente chamadas de 
 
 ## Histórico de versões
 
+### v0.3.1 (2026-05-28)
+- **fix:** chamadas perdidas e rejeitadas manualmente exibidas em branco no histórico, igual às chamadas liberadas; passam a ser exibidas em laranja para distinguir desfechos determinados pelo usuário ou pelo sistema dos desfechos determinados pelo app
+
 ### v0.3.0 (2026-05-28)
 - **fix:** chamadas perdidas (`MISSED_TYPE`) e rejeitadas manualmente (`REJECTED_TYPE`) exibidas como "· Call Guard" em vez de "· Sistema"; `handledByApp` era definido como `appCall != null` em `getMergedHistory()`, atribuindo o desfecho ao app mesmo quando ele foi determinado pelo usuário ou pelo sistema; corrigido excluindo `MISSED_TYPE` e `REJECTED_TYPE` da condição de `handledByApp = true`
 

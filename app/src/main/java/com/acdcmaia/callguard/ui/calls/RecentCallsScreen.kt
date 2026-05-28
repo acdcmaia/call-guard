@@ -83,7 +83,12 @@ private fun CallHistoryRow(item: CallHistoryItem) {
     } + attribution
 
     val isBlocked = !item.serviceWasDisabled && (item.blockReason != null || item.callType == CallLog.Calls.BLOCKED_TYPE)
-    val textColor = if (isBlocked) Color.Red else Color.Unspecified
+    val isUserOutcome = item.callType == CallLog.Calls.MISSED_TYPE || item.callType == CallLog.Calls.REJECTED_TYPE
+    val textColor = when {
+        isBlocked -> Color.Red
+        isUserOutcome -> Color(0xFFFF9800)
+        else -> Color.Unspecified
+    }
 
     ListItem(
         headlineContent = {
